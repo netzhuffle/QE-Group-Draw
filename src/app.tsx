@@ -123,20 +123,6 @@ export function App(): ReactElement {
   const noteMessage = constraintFeed === null ? latestMessage : constraintFeed.messages.join(" ");
 
   useEffect(() => {
-    if (highlightedPlacementKey === null) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setHighlightedPlacementKey((current) =>
-        current === highlightedPlacementKey ? null : current,
-      );
-    }, 1350);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [highlightedPlacementKey]);
-
-  useEffect(() => {
     if (constraintFeed === null) {
       return;
     }

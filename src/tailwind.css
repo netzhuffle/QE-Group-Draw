@@ -269,6 +269,10 @@
     animation: slot-drop-in 1250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
+  .slot-row--placed::before {
+    animation: slot-highlight-fade 20s linear both;
+  }
+
   .slot-team {
     @apply col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2;
   }
@@ -451,6 +455,20 @@
     transform: translateY(0) scale(1);
     box-shadow: 0 0 0 oklch(0.42 0.09 250 / 0);
     filter: saturate(1);
+  }
+}
+
+@keyframes slot-highlight-fade {
+  0% {
+    filter: brightness(0.78) saturate(1.15);
+  }
+
+  50% {
+    filter: brightness(0.78) saturate(1.15);
+  }
+
+  100% {
+    filter: brightness(1) saturate(1);
   }
 }
 

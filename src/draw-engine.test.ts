@@ -121,6 +121,27 @@ describe("placeTeamById", () => {
     expect(result.messages.join(" ")).toContain("Future Team");
   });
 
+  test("fills first unseeded slots across all groups before second unseeded slots", () => {
+    const teams = [
+      createTeam("alpha", "unseeded", "Belgium", "Alpha"),
+      createTeam("bravo", "unseeded", "France", "Bravo"),
+      createTeam("charlie", "unseeded", "Spain", "Charlie"),
+      createTeam("delta", "unseeded", "Germany", "Delta"),
+    ];
+    let state = createDivisionState(createDivisionConfig(teams, { groupNames: ["A", "B", "C"] }));
+
+    state = placeTeamById(state, "alpha").updatedState;
+    state = placeTeamById(state, "bravo").updatedState;
+    state = placeTeamById(state, "charlie").updatedState;
+
+    const fourthResult = placeTeamById(state, "delta");
+
+    expect(state.groups[0]?.slots[2]?.name).toBe("Alpha");
+    expect(state.groups[1]?.slots[2]?.name).toBe("Bravo");
+    expect(state.groups[2]?.slots[2]?.name).toBe("Charlie");
+    expect(fourthResult.updatedState.groups[0]?.slots[3]?.name).toBe("Delta");
+  });
+
   test("reports failure when no valid placement remains", () => {
     const teams = [
       createTeam("seed-a", "seed1", "Belgium", "Seed A"),

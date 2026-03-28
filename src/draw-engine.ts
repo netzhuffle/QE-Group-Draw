@@ -183,10 +183,24 @@ function analyzeCandidates(
   }
 
   return {
-    eligiblePlacements,
+    eligiblePlacements: sortPlacements(eligiblePlacements, team.seed),
     skippedForNgb,
     duplicateAllowanceGroups,
   };
+}
+
+function sortPlacements(placements: PlacementOption[], seed: SeedBracket): PlacementOption[] {
+  if (seed !== "unseeded") {
+    return placements;
+  }
+
+  return placements.toSorted((left, right) => {
+    if (left.slotIndex !== right.slotIndex) {
+      return left.slotIndex - right.slotIndex;
+    }
+
+    return left.groupIndex - right.groupIndex;
+  });
 }
 
 function getSlotIndex(group: GroupState, seed: SeedBracket): number | null {

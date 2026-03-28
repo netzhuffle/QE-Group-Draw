@@ -1,0 +1,35 @@
+{
+  "name": "qe-group-draw",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "css:build": "bunx --bun postcss ./src/tailwind.css -o ./src/styles.css",
+    "css:dev": "bunx --bun postcss ./src/tailwind.css -o ./src/styles.css --watch",
+    "dev": "bun run css:dev & bun ./src/index.html",
+    "build": "bun run css:build && bun build ./src/index.html --outdir ./dist --target browser --minify",
+    "test": "bun test",
+    "format": "bunx --bun oxfmt src/*.ts src/*.tsx src/tailwind.css postcss.config.mjs",
+    "format:check": "bunx --bun oxfmt src/*.ts src/*.tsx src/tailwind.css postcss.config.mjs --check",
+    "lint": "bunx --bun oxlint src/*.ts src/*.tsx",
+    "check": "bun run format:check && bun run lint && bun run test"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/bun": "^1.3.11",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "lightningcss": "^1.32.0",
+    "lightningcss-darwin-x64": "^1.32.0",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.18.1",
+    "postcss": "^8.5.8",
+    "postcss-cli": "^11.0.1",
+    "tailwindcss": "^4.2.2"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}

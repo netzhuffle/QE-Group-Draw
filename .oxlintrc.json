@@ -8,11 +8,18 @@
   "plugins": [
     "eslint",
     "typescript",
+    "react",
+    "react-perf",
     "unicorn",
     "oxc",
     "import",
     "promise"
   ],
+  "settings": {
+    "react": {
+      "version": "19.2.4"
+    }
+  },
   "env": {
     "builtin": true,
     "browser": true
@@ -30,6 +37,9 @@
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/consistent-type-definitions": "error",
     "@typescript-eslint/prefer-for-of": "error",
+    "react/react-in-jsx-scope": "off",
+    "react_perf/jsx-no-new-array-as-prop": "off",
+    "react_perf/jsx-no-new-function-as-prop": "off",
     "no-var": "error",
     "prefer-const": "error",
     "prefer-rest-params": "error",

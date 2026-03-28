@@ -50,10 +50,6 @@
       white;
   }
 
-  .hero-surface--with-feed {
-    padding-bottom: 3.65rem;
-  }
-
   .hero-grid {
     @apply grid items-center gap-3 lg:grid-cols-[minmax(14rem,18rem)_minmax(22rem,1fr)_auto];
   }
@@ -119,31 +115,21 @@
     @apply mt-2.5 flex items-center gap-2 border-t border-slate-200/80 pt-2.5;
   }
 
+  .note-strip__text {
+    @apply text-[0.78rem] font-medium text-slate-700;
+  }
+
+  .note-strip--constraint {
+    border-top-color: color-mix(in oklch, var(--panel-border) 70%, white);
+  }
+
+  .note-strip--constraint .note-strip__text {
+    animation: note-text-flash 5.5s ease-out both;
+  }
+
   .note-pill {
     @apply inline-flex rounded-full px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-white;
     background: linear-gradient(135deg, var(--primary), var(--primary-strong));
-  }
-
-  .constraint-feed {
-    @apply pointer-events-none absolute bottom-3 left-4 right-4 z-30 rounded-[1rem] border px-3 py-2 text-[0.74rem] font-semibold text-slate-800 shadow-[0_18px_32px_rgba(15,23,42,0.18)];
-    border-color: color-mix(in oklch, var(--primary) 36%, white);
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in oklch, var(--primary-soft) 76%, white),
-        color-mix(in oklch, var(--support-soft) 84%, white)
-      ),
-      white;
-    animation: constraint-feed-flash 9s ease-out both;
-  }
-
-  .constraint-feed__label {
-    @apply mb-1 inline-flex rounded-full px-2 py-0.5 text-[0.56rem] font-black uppercase tracking-[0.12em] text-white;
-    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
-  }
-
-  .constraint-feed p {
-    @apply leading-4 text-slate-800;
   }
 
   .stage-grid {
@@ -269,6 +255,14 @@
     z-index: 1;
   }
 
+  .slot-row--empty {
+    grid-template-columns: 1fr;
+  }
+
+  .slot-row--empty .slot-pill {
+    justify-self: end;
+  }
+
   .slot-row--placed {
     z-index: 12;
     transform-origin: center;
@@ -280,7 +274,7 @@
   }
 
   .slot-flag {
-    @apply inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-white text-[0.8rem] shadow-[0_4px_10px_rgba(15,23,42,0.08)];
+    @apply inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-white text-[1.02rem] shadow-[0_4px_10px_rgba(15,23,42,0.08)];
   }
 
   .slot-row--seed1 {
@@ -392,7 +386,7 @@
   }
 
   .flag-badge {
-    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white bg-white text-[0.92rem] shadow-[0_6px_14px_rgba(15,23,42,0.1)];
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white bg-white text-[1.14rem] shadow-[0_6px_14px_rgba(15,23,42,0.1)];
   }
 
   .empty-state {
@@ -411,31 +405,33 @@
   background-clip: padding-box;
 }
 
-@keyframes constraint-feed-flash {
+@keyframes note-text-flash {
   0% {
-    opacity: 0;
-    transform: translateY(-12px) scale(0.97);
-    box-shadow: 0 0 0 oklch(0.7 0.16 250 / 0);
+    color: color-mix(in oklch, var(--primary-strong) 92%, black 8%);
+    text-shadow:
+      0 0 0 color-mix(in oklch, var(--primary-soft) 0%, transparent),
+      0 0 0 color-mix(in oklch, white 0%, transparent);
   }
 
-  12% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    box-shadow:
-      0 20px 40px oklch(0.45 0.08 250 / 0.22),
-      0 0 0 8px color-mix(in oklch, var(--primary-soft) 72%, white);
+  16% {
+    color: color-mix(in oklch, var(--primary-strong) 88%, black 8%);
+    text-shadow:
+      0 0 14px color-mix(in oklch, var(--primary-soft) 78%, white),
+      0 0 2px color-mix(in oklch, white 92%, transparent);
   }
 
-  30% {
-    box-shadow:
-      0 18px 34px oklch(0.45 0.08 250 / 0.18),
-      0 0 0 4px color-mix(in oklch, var(--primary-soft) 52%, white);
+  36% {
+    color: color-mix(in oklch, var(--primary) 72%, slategray 28%);
+    text-shadow:
+      0 0 8px color-mix(in oklch, var(--primary-soft) 52%, white),
+      0 0 1px color-mix(in oklch, white 80%, transparent);
   }
 
   100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    box-shadow: 0 18px 32px oklch(0.45 0.08 250 / 0.14);
+    color: oklch(0.52 0.03 255);
+    text-shadow:
+      0 0 0 color-mix(in oklch, var(--primary-soft) 0%, transparent),
+      0 0 0 color-mix(in oklch, white 0%, transparent);
   }
 }
 
@@ -479,20 +475,9 @@
     padding: 0.75rem;
   }
 
-  .hero-surface--with-feed {
-    padding-bottom: 0.75rem;
-  }
-
   .note-strip {
     align-items: start;
     flex-direction: column;
-  }
-
-  .constraint-feed {
-    position: static;
-    margin-top: 0.75rem;
-    max-width: none;
-    animation-duration: 6.5s;
   }
 }
 

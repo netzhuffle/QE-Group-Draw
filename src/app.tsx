@@ -119,6 +119,8 @@ export function App(): ReactElement {
   const placedTeamCount = activeState.config.teams.length - undrawnTeams.length;
   const progress = Math.round((placedTeamCount / activeState.config.teams.length) * 100);
   const latestMessage = activeState.messages[0] ?? "Ready for the next draw.";
+  const noteLabel = constraintFeed === null ? "Latest note" : "Placement note";
+  const noteMessage = constraintFeed === null ? latestMessage : constraintFeed.messages.join(" ");
 
   useEffect(() => {
     if (highlightedPlacementKey === null) {
@@ -194,9 +196,7 @@ export function App(): ReactElement {
 
   return (
     <div className="board-shell" style={divisionThemeStyles[activeDivisionId]}>
-      <header
-        className={`hero-surface${constraintFeed !== null ? " hero-surface--with-feed" : ""}`}
-      >
+      <header className="hero-surface">
         <div className="hero-grid">
           <div className="min-w-0">
             <div className="eyebrow">European Quadball Cup 2026</div>
@@ -236,18 +236,10 @@ export function App(): ReactElement {
           </div>
         </div>
 
-        <div className="note-strip">
-          <span className="note-pill">Latest note</span>
-          <p className="min-w-0 truncate text-[0.78rem] font-medium text-slate-700">
-            {latestMessage}
-          </p>
+        <div className={`note-strip${constraintFeed !== null ? " note-strip--constraint" : ""}`}>
+          <span className="note-pill">{noteLabel}</span>
+          <p className="note-strip__text min-w-0 truncate">{noteMessage}</p>
         </div>
-        {constraintFeed !== null ? (
-          <div className="constraint-feed" key={constraintFeed.id}>
-            <span className="constraint-feed__label">Placement note</span>
-            <p>{constraintFeed.messages.join(" ")}</p>
-          </div>
-        ) : null}
       </header>
 
       <main className="stage-grid">
@@ -343,16 +335,11 @@ function GroupCard(props: {
 
           return (
             <li
-              className={`slot-row slot-row--${slotTone}${isPlacedHighlight ? " slot-row--placed" : ""}`}
+              className={`slot-row slot-row--${slotTone}${slot === null ? " slot-row--empty" : ""}${isPlacedHighlight ? " slot-row--placed" : ""}`}
               key={slotKey}
             >
               {slot === null ? (
-                <>
-                  <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
-                  <span className="truncate text-[0.72rem] font-medium text-slate-700">
-                    Waiting for {label.toLowerCase()}
-                  </span>
-                </>
+                <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
               ) : (
                 <div className="slot-team" title={`${slot.name} (${slot.ngb})`}>
                   <span aria-label={slot.ngb} className="slot-flag">

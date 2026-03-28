@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qe-group-draw-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare release bundle
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          rsync -a \
+            src/ \
+            release/
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-${{ github.sha }}
+          path: release
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: bundle
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://jannis.rocks/groupdraw
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: release-${{ github.sha }}
+          path: release
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${SSH_PRIVATE_KEY:?Missing SSH_PRIVATE_KEY secret}"
+          : "${KNOWN_HOSTS:?Missing KNOWN_HOSTS secret}"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Sync site to server
+        env:
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          : "${DEPLOY_USER:?Missing DEPLOY_USER variable}"
+
+          deploy_host="jannis.rocks"
+          deploy_path="/var/www/jannis.rocks/public_html/groupdraw"
+          ssh_opts="-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes"
+
+          ssh $ssh_opts "${DEPLOY_USER}@${deploy_host}" "mkdir -p '${deploy_path}'"
+
+          rsync -az --delete \
+            -e "ssh $ssh_opts" \
+            release/ \
+            "${DEPLOY_USER}@${deploy_host}:${deploy_path}/"
+
+      - name: Remove SSH config
+        if: always()
+        run: rm -rf ~/.ssh

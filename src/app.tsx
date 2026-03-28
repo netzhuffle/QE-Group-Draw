@@ -328,7 +328,10 @@ function GroupCard(props: {
                 <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
               ) : (
                 <div className="slot-team" title={`${slot.name} (${slot.ngb})`}>
-                  <span aria-label={slot.ngb} className="slot-flag">
+                  <span
+                    aria-label={slot.ngb}
+                    className={`slot-flag${getFlagModifierClass(slot.ngb)}`}
+                  >
                     {getFlag(slot.ngb)}
                   </span>
                   <strong className="truncate text-[0.8rem] leading-tight font-bold text-slate-900">
@@ -376,7 +379,7 @@ function SeedSection(props: {
               type="button"
               onClick={() => props.onDraw(team.id)}
             >
-              <span aria-label={team.ngb} className="flag-badge">
+              <span aria-label={team.ngb} className={`flag-badge${getFlagModifierClass(team.ngb)}`}>
                 {getFlag(team.ngb)}
               </span>
               <span className="min-w-0 truncate text-[0.82rem] font-bold text-slate-900">
@@ -392,6 +395,10 @@ function SeedSection(props: {
 
 function getFlag(ngb: string): string {
   return ngbFlags[ngb] ?? "🏳️";
+}
+
+function getFlagModifierClass(ngb: string): string {
+  return ngb === "Switzerland" ? " flag--swiss" : "";
 }
 
 function getDivisionRuleSummary(state: DivisionState): string {

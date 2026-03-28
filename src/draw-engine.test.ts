@@ -118,7 +118,7 @@ describe("placeTeamById", () => {
 
     expect(result.ok).toBe(true);
     expect(result.updatedState.groups[2]?.slots[1]?.name).toBe("Drawn Team");
-    expect(result.messages.join(" ")).toContain("Future Team");
+    expect(result.messages.join(" ")).toContain("Spain");
   });
 
   test("fills first unseeded slots across all groups before second unseeded slots", () => {
@@ -140,6 +140,30 @@ describe("placeTeamById", () => {
     expect(state.groups[1]?.slots[2]?.name).toBe("Bravo");
     expect(state.groups[2]?.slots[2]?.name).toBe("Charlie");
     expect(fourthResult.updatedState.groups[0]?.slots[3]?.name).toBe("Delta");
+  });
+
+  test("does not report same-ngb skips from groups after the chosen placement", () => {
+    const teams = [
+      createTeam("seed-a", "seed1", "France", "Seed A"),
+      createTeam("seed-b", "seed1", "Spain", "Seed B"),
+      createTeam("seed-c", "seed1", "Germany", "Seed C"),
+      createTeam("seed-d", "seed1", "UK", "Seed D"),
+      createTeam("pick", "seed2", "UK", "Pick"),
+    ];
+    let state = createDivisionState(
+      createDivisionConfig(teams, { groupNames: ["A", "B", "C", "D"] }),
+    );
+
+    state = placeTeamById(state, "seed-a").updatedState;
+    state = placeTeamById(state, "seed-b").updatedState;
+    state = placeTeamById(state, "seed-c").updatedState;
+    state = placeTeamById(state, "seed-d").updatedState;
+
+    const result = placeTeamById(state, "pick");
+
+    expect(result.ok).toBe(true);
+    expect(result.updatedState.groups[0]?.slots[1]?.name).toBe("Pick");
+    expect(result.messages.join(" ")).not.toContain("Skipping Group D");
   });
 
   test("reports failure when no valid placement remains", () => {

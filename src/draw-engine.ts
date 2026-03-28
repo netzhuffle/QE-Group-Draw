@@ -14,8 +14,8 @@ interface PlacementOption {
 
 interface CandidateAnalysis {
   eligiblePlacements: PlacementOption[];
-  skippedForNgb: number[];
-  duplicateAllowanceGroups: number[];
+  skippedForNgb: PlacementOption[];
+  duplicateAllowancePlacements: PlacementOption[];
 }
 
 interface CompletionResult {
@@ -117,7 +117,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
     state.config,
     candidateAnalysis,
     forwardSkipped,
-    chosenPlacement.groupIndex,
+    chosenPlacement,
   );
 
   messages.push(
@@ -156,8 +156,8 @@ function analyzeCandidates(
   config: DivisionConfig,
 ): CandidateAnalysis {
   const eligiblePlacements: PlacementOption[] = [];
-  const skippedForNgb: number[] = [];
-  const duplicateAllowanceGroups: number[] = [];
+  const skippedForNgb: PlacementOption[] = [];
+  const duplicateAllowancePlacements: PlacementOption[] = [];
 
   for (const [groupIndex, group] of groups.entries()) {
     const slotIndex = getSlotIndex(group, team.seed);
@@ -174,18 +174,19 @@ function analyzeCandidates(
     }
 
     if (canUseDuplicateAllowance(team.ngb, matchingTeams, groups, config)) {
-      duplicateAllowanceGroups.push(groupIndex);
-      eligiblePlacements.push({ groupIndex, slotIndex });
+      const placement = { groupIndex, slotIndex };
+      duplicateAllowancePlacements.push(placement);
+      eligiblePlacements.push(placement);
       continue;
     }
 
-    skippedForNgb.push(groupIndex);
+    skippedForNgb.push({ groupIndex, slotIndex });
   }
 
   return {
     eligiblePlacements: sortPlacements(eligiblePlacements, team.seed),
     skippedForNgb,
-    duplicateAllowanceGroups,
+    duplicateAllowancePlacements,
   };
 }
 
@@ -419,42 +420,49 @@ function buildPlacementMessages(
   config: DivisionConfig,
   candidateAnalysis: CandidateAnalysis,
   forwardSkipped: Array<{ groupIndex: number; blockedTeam?: Team }>,
-  chosenGroupIndex: number | undefined,
+  chosenPlacement: PlacementOption | undefined,
 ): string[] {
   const messages: string[] = [];
+  const relevantSkippedForNgb = chosenPlacement
+    ? candidateAnalysis.skippedForNgb.filter((placement) =>
+        affectsChosenPlacement(placement, chosenPlacement),
+      )
+    : candidateAnalysis.skippedForNgb;
+  const relevantDuplicateAllowancePlacements = chosenPlacement
+    ? candidateAnalysis.duplicateAllowancePlacements.filter((placement) =>
+        affectsOrMatchesChosenPlacement(placement, chosenPlacement),
+      )
+    : candidateAnalysis.duplicateAllowancePlacements;
 
-  if (candidateAnalysis.skippedForNgb.length > 0) {
+  if (relevantSkippedForNgb.length > 0) {
     messages.push(
       `Skipping ${formatGroupNames(
-        candidateAnalysis.skippedForNgb,
+        relevantSkippedForNgb.map((placement) => placement.groupIndex),
         config,
       )} for ${team.name} because ${team.ngb} is already represented there.`,
     );
   }
 
-  if (
-    candidateAnalysis.duplicateAllowanceGroups.length > 0 &&
-    config.duplicateAllowance !== undefined
-  ) {
+  if (relevantDuplicateAllowancePlacements.length > 0 && config.duplicateAllowance !== undefined) {
     messages.push(
       `${config.duplicateAllowance.ngb} may form exactly one duplicate pair in ${config.shortName}, so ${formatGroupNames(
-        candidateAnalysis.duplicateAllowanceGroups,
+        relevantDuplicateAllowancePlacements.map((placement) => placement.groupIndex),
         config,
       )} remain eligible for ${team.name}.`,
     );
   }
 
-  if (forwardSkipped.length > 0 && chosenGroupIndex !== undefined) {
-    const blockedTeamNames = [
+  if (forwardSkipped.length > 0 && chosenPlacement !== undefined) {
+    const blockedNgbs = [
       ...new Set(
         forwardSkipped
-          .map((entry) => entry.blockedTeam?.name)
+          .map((entry) => entry.blockedTeam?.ngb)
           .filter((entry): entry is string => entry !== undefined),
       ),
     ];
     const blockerSuffix =
-      blockedTeamNames.length > 0
-        ? `, preserving a future slot for ${joinNaturalList(blockedTeamNames)}`
+      blockedNgbs.length > 0
+        ? `, preserving a future slot for ${joinNaturalList(blockedNgbs)}`
         : ", preserving a valid future draw";
 
     messages.push(
@@ -462,12 +470,34 @@ function buildPlacementMessages(
         forwardSkipped.map((entry) => entry.groupIndex),
         config,
       )} for ${team.name}${blockerSuffix}; placing them in Group ${
-        config.groupNames[chosenGroupIndex]
+        config.groupNames[chosenPlacement.groupIndex]
       } instead.`,
     );
   }
 
   return messages;
+}
+
+function affectsChosenPlacement(
+  placement: PlacementOption,
+  chosenPlacement: PlacementOption,
+): boolean {
+  return comparePlacements(placement, chosenPlacement) < 0;
+}
+
+function affectsOrMatchesChosenPlacement(
+  placement: PlacementOption,
+  chosenPlacement: PlacementOption,
+): boolean {
+  return comparePlacements(placement, chosenPlacement) <= 0;
+}
+
+function comparePlacements(left: PlacementOption, right: PlacementOption): number {
+  if (left.slotIndex !== right.slotIndex) {
+    return left.slotIndex - right.slotIndex;
+  }
+
+  return left.groupIndex - right.groupIndex;
 }
 
 function formatGroupNames(groupIndexes: number[], config: DivisionConfig): string {

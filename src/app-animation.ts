@@ -1,9 +1,9 @@
 import type { PlacementAnimationStep } from "./types.ts";
 
 const CUE_STAGGER_MS = 500;
-const NGB_EXISTING_DISPLAY_MS = 1500;
-const NGB_TARGET_DISPLAY_MS = 2100;
-const RESERVED_DISPLAY_MS = 2400;
+const NGB_EXISTING_DISPLAY_MS = 5000;
+const NGB_TARGET_DISPLAY_MS = 5000;
+const RESERVED_DISPLAY_MS = 5000;
 
 export type SkipAnimationCue =
   | {
@@ -79,8 +79,24 @@ export function buildScheduledSkipCues(skipSteps: PlacementAnimationStep[]): Sch
 }
 
 export function getPlacementAnimationDuration(skipSteps: PlacementAnimationStep[]): number {
+  const scheduledCues = buildScheduledSkipCues(skipSteps);
+
+  if (scheduledCues.length === 0) {
+    return 0;
+  }
+
+  return (
+    scheduledCues.reduce(
+      (latestStartMs, scheduledCue) => Math.max(latestStartMs, scheduledCue.atMs),
+      0,
+    ) + CUE_STAGGER_MS
+  );
+}
+
+export function getSkipCueLifetime(skipSteps: PlacementAnimationStep[]): number {
   return buildScheduledSkipCues(skipSteps).reduce(
-    (endMs, scheduledCue) => Math.max(endMs, scheduledCue.atMs + scheduledCue.durationMs),
+    (latestEndMs, scheduledCue) =>
+      Math.max(latestEndMs, scheduledCue.atMs + scheduledCue.durationMs),
     0,
   );
 }

@@ -5,11 +5,13 @@ import {
   buildScheduledSkipCues,
   clearAnimationTimeouts,
   getPlacementAnimationDuration,
+  getSkipCueLifetime,
   type SkipAnimationCue,
 } from "./app-animation.ts";
 import { getFlag, getFlagModifierClass } from "./app-flags.ts";
 import {
   buildConstraintFeed,
+  buildNoteTextSegments,
   findTargetCue,
   findPlacementKey,
   getDivisionRuleSummary,
@@ -132,6 +134,7 @@ export function App(): ReactElement {
   const latestMessage = activeState.messages[0] ?? "Ready for the next draw.";
   const noteLabel = constraintFeed === null ? "Latest note" : "Placement note";
   const noteMessage = constraintFeed === null ? latestMessage : constraintFeed.messages.join(" ");
+  const noteSegments = buildNoteTextSegments(noteMessage);
   const teamsBySeed = groupTeamsBySeed(undrawnTeams);
 
   useEffect(() => {
@@ -186,11 +189,6 @@ export function App(): ReactElement {
         [activeDivisionId]: result.updatedState,
       }));
       setHighlightedPlacementKey(placementKey);
-      stopPlacementAnimation(
-        animationTimeoutIdsRef.current,
-        setSkipAnimationCues,
-        setIsPlacementAnimating,
-      );
     };
 
     if (result.animationPlan === undefined || result.animationPlan.skipSteps.length === 0) {
@@ -206,7 +204,11 @@ export function App(): ReactElement {
     );
 
     const completionDelayMs = getPlacementAnimationDuration(result.animationPlan.skipSteps);
+    const cueLifetimeMs = getSkipCueLifetime(result.animationPlan.skipSteps);
     animationTimeoutIdsRef.current.push(window.setTimeout(applyPlacement, completionDelayMs));
+    animationTimeoutIdsRef.current.push(
+      window.setTimeout(() => setIsPlacementAnimating(false), cueLifetimeMs),
+    );
   };
 
   const handleReset = (): void => {
@@ -276,7 +278,17 @@ export function App(): ReactElement {
 
         <div className={`note-strip${constraintFeed !== null ? " note-strip--constraint" : ""}`}>
           <span className="note-pill">{noteLabel}</span>
-          <p className="note-strip__text min-w-0 truncate">{noteMessage}</p>
+          <p className="note-strip__text" title={noteMessage}>
+            {noteSegments.map((segment) =>
+              segment.emphasized ? (
+                <strong className="note-strip__emphasis" key={segment.key}>
+                  {segment.text}
+                </strong>
+              ) : (
+                <span key={segment.key}>{segment.text}</span>
+              ),
+            )}
+          </p>
         </div>
       </header>
 
@@ -553,7 +565,4 @@ function schedulePlacementAnimation(
       }, scheduledCue.atMs + scheduledCue.durationMs),
     );
   }
-
-  const clearAtMs = getPlacementAnimationDuration(animationPlan.skipSteps);
-  timeoutIds.push(window.setTimeout(() => setSkipAnimationCues([]), clearAtMs));
 }

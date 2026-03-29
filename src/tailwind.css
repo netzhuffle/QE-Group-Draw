@@ -112,11 +112,19 @@
   }
 
   .note-strip {
-    @apply mt-2.5 flex items-center gap-2 border-t border-slate-200/80 pt-2.5;
+    @apply mt-2.5 flex min-w-0 max-w-full items-start gap-2 overflow-hidden border-t border-slate-200/80 pt-2.5;
   }
 
   .note-strip__text {
-    @apply text-[0.78rem] font-medium text-slate-700;
+    @apply min-w-0 flex-1 overflow-hidden text-[0.78rem] leading-[1.2] font-medium text-slate-700;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .note-strip__emphasis {
+    @apply font-black text-slate-900;
   }
 
   .note-strip--constraint {
@@ -128,7 +136,7 @@
   }
 
   .note-pill {
-    @apply inline-flex rounded-full px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-white;
+    @apply inline-flex shrink-0 rounded-full px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-white;
     background: linear-gradient(135deg, var(--primary), var(--primary-strong));
   }
 
@@ -331,7 +339,7 @@
   }
 
   .slot-cue {
-    @apply pointer-events-none absolute left-3 top-1/2 z-[3] flex -translate-y-1/2 items-center gap-1;
+    @apply pointer-events-none absolute inset-y-0 left-3 z-[3] flex items-center gap-1;
   }
 
   .slot-cue--blocked {
@@ -402,7 +410,7 @@
   }
 
   .seed-header {
-    @apply sticky top-0 z-10 mb-1 rounded-[0.85rem] px-2.5 py-1 shadow-[0_6px_14px_rgba(15,23,42,0.08)];
+    @apply sticky top-0 z-10 mb-2 rounded-[0.85rem] px-2.5 py-1 shadow-[0_6px_14px_rgba(15,23,42,0.08)];
   }
 
   .team-button {
@@ -541,19 +549,19 @@
 @keyframes slot-cue-arrive {
   0% {
     opacity: 0;
-    transform: translateY(-50%) scale(0.84);
+    transform: scale(0.84);
     filter: saturate(0.92);
   }
 
   60% {
     opacity: 1;
-    transform: translateY(-50%) scale(1.08);
+    transform: scale(1.08);
     filter: saturate(1.08);
   }
 
   100% {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
+    transform: scale(1);
     filter: saturate(1);
   }
 }

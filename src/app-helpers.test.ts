@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildConstraintFeed,
+  buildNoteTextSegments,
   findTargetCue,
   findPlacementKey,
   getSlotRowClasses,
@@ -47,6 +48,34 @@ describe("app helpers", () => {
     });
 
     expect(buildConstraintFeed(["Team joins Group B in Seed 2."])).toBeNull();
+  });
+
+  test("builds emphasized note segments for groups and NGBs", () => {
+    expect(
+      buildNoteTextSegments(
+        "Skipping Group B for Toulouse Minotaures because France is already represented there.",
+      ),
+    ).toMatchObject([
+      { text: "Skipping ", emphasized: false },
+      { text: "Group B", emphasized: true },
+      { text: " for Toulouse Minotaures because ", emphasized: false },
+      { text: "France", emphasized: true },
+      { text: " is already represented there.", emphasized: false },
+    ]);
+
+    expect(
+      buildNoteTextSegments(
+        "Skipping Group C for Team, preserving a future slot for UK; placing them in Group D instead.",
+      ),
+    ).toMatchObject([
+      { text: "Skipping ", emphasized: false },
+      { text: "Group C", emphasized: true },
+      { text: " for Team, preserving a future slot for ", emphasized: false },
+      { text: "UK", emphasized: true },
+      { text: "; placing them in ", emphasized: false },
+      { text: "Group D", emphasized: true },
+      { text: " instead.", emphasized: false },
+    ]);
   });
 
   test("matches existing and target skip cues correctly", () => {

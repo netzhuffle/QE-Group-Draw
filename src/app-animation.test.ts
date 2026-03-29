@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildScheduledSkipCues, getPlacementAnimationDuration } from "./app-animation.ts";
+import {
+  buildScheduledSkipCues,
+  getPlacementAnimationDuration,
+  getSkipCueLifetime,
+} from "./app-animation.ts";
 import type { PlacementAnimationStep } from "./types.ts";
 
 describe("app animation helpers", () => {
@@ -22,7 +26,7 @@ describe("app animation helpers", () => {
     expect(buildScheduledSkipCues(skipSteps)).toEqual([
       {
         atMs: 0,
-        durationMs: 1500,
+        durationMs: 5000,
         cue: {
           kind: "ngb_existing",
           groupIndex: 0,
@@ -32,7 +36,7 @@ describe("app animation helpers", () => {
       },
       {
         atMs: 500,
-        durationMs: 2100,
+        durationMs: 5000,
         cue: {
           kind: "ngb_target",
           groupIndex: 0,
@@ -42,7 +46,7 @@ describe("app animation helpers", () => {
       },
       {
         atMs: 1000,
-        durationMs: 2400,
+        durationMs: 5000,
         cue: {
           kind: "reserved_target",
           groupIndex: 1,
@@ -53,7 +57,7 @@ describe("app animation helpers", () => {
     ]);
   });
 
-  test("sums placement animation duration by skip kind", () => {
+  test("uses cue stagger timing to trigger the final placement", () => {
     const skipSteps: PlacementAnimationStep[] = [
       {
         kind: "ngb_limit",
@@ -68,6 +72,24 @@ describe("app animation helpers", () => {
       },
     ];
 
-    expect(getPlacementAnimationDuration(skipSteps)).toBe(3400);
+    expect(getPlacementAnimationDuration(skipSteps)).toBe(1500);
+  });
+
+  test("keeps skip cues active for their full display lifetime", () => {
+    const skipSteps: PlacementAnimationStep[] = [
+      {
+        kind: "ngb_limit",
+        placement: { groupIndex: 0, slotIndex: 1 },
+        conflictingSlotIndexes: [0],
+        ngb: "France",
+      },
+      {
+        kind: "reserved",
+        placement: { groupIndex: 1, slotIndex: 1 },
+        reservedNgbs: ["Spain", "UK"],
+      },
+    ];
+
+    expect(getSkipCueLifetime(skipSteps)).toBe(6000);
   });
 });

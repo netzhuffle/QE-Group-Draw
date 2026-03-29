@@ -6,6 +6,12 @@ export interface ConstraintFeedState {
   messages: string[];
 }
 
+export interface NoteTextSegment {
+  key: string;
+  text: string;
+  emphasized: boolean;
+}
+
 export function groupTeamsBySeed(teams: Team[]): Record<SeedBracket, Team[]> {
   const grouped: Record<SeedBracket, Team[]> = {
     seed1: [],
@@ -24,6 +30,91 @@ export function buildConstraintFeed(messages: string[]): ConstraintFeedState | n
   const placementNotes = messages.filter((message) => !message.includes(" joins Group "));
 
   return placementNotes.length > 0 ? { id: Date.now(), messages: placementNotes } : null;
+}
+
+export function buildNoteTextSegments(message: string): NoteTextSegment[] {
+  const emphasisRanges: Array<{ start: number; end: number }> = [];
+  const addRange = (start: number, end: number): void => {
+    if (start >= end) {
+      return;
+    }
+
+    emphasisRanges.push({ start, end });
+  };
+
+  for (const match of message.matchAll(/Group [A-Z]/g)) {
+    if (match.index !== undefined) {
+      addRange(match.index, match.index + match[0].length);
+    }
+  }
+
+  for (const match of message.matchAll(/because (.+?) is already represented there\./g)) {
+    if (match.index !== undefined && match[1] !== undefined) {
+      const start = match.index + "because ".length;
+      addRange(start, start + match[1].length);
+    }
+  }
+
+  for (const match of message.matchAll(/preserving a future slot for (.+?)(?=;|,|$)/g)) {
+    if (match.index !== undefined && match[1] !== undefined) {
+      const start = match.index + "preserving a future slot for ".length;
+      addRange(start, start + match[1].length);
+    }
+  }
+
+  for (const match of message.matchAll(/^(.+?) may form exactly one duplicate pair/g)) {
+    if (match.index !== undefined && match[1] !== undefined) {
+      addRange(match.index, match.index + match[1].length);
+    }
+  }
+
+  if (emphasisRanges.length === 0) {
+    return [{ key: "0-full", text: message, emphasized: false }];
+  }
+
+  const mergedRanges = emphasisRanges
+    .toSorted((left, right) => left.start - right.start)
+    .reduce<Array<{ start: number; end: number }>>((ranges, range) => {
+      const previousRange = ranges.at(-1);
+
+      if (previousRange === undefined || range.start > previousRange.end) {
+        ranges.push({ ...range });
+        return ranges;
+      }
+
+      previousRange.end = Math.max(previousRange.end, range.end);
+      return ranges;
+    }, []);
+
+  const segments: NoteTextSegment[] = [];
+  let cursor = 0;
+
+  for (const range of mergedRanges) {
+    if (cursor < range.start) {
+      segments.push({
+        key: `${cursor}-${range.start}-plain`,
+        text: message.slice(cursor, range.start),
+        emphasized: false,
+      });
+    }
+
+    segments.push({
+      key: `${range.start}-${range.end}-strong`,
+      text: message.slice(range.start, range.end),
+      emphasized: true,
+    });
+    cursor = range.end;
+  }
+
+  if (cursor < message.length) {
+    segments.push({
+      key: `${cursor}-${message.length}-plain`,
+      text: message.slice(cursor),
+      emphasized: false,
+    });
+  }
+
+  return segments;
 }
 
 export function matchesExistingCue(

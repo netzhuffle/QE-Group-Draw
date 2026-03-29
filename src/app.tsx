@@ -1,6 +1,26 @@
-import { useEffect, useState } from "react";
-import type { CSSProperties, ReactElement } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, Dispatch, ReactElement, SetStateAction } from "react";
 
+import {
+  buildScheduledSkipCues,
+  clearAnimationTimeouts,
+  getPlacementAnimationDuration,
+  type SkipAnimationCue,
+} from "./app-animation.ts";
+import { getFlag, getFlagModifierClass } from "./app-flags.ts";
+import {
+  buildConstraintFeed,
+  findTargetCue,
+  findPlacementKey,
+  getDivisionRuleSummary,
+  getPlacedCount,
+  getPoolRuleChip,
+  getSlotRowClasses,
+  groupTeamsBySeed,
+  matchesExistingCue,
+  matchesTargetCue,
+  type ConstraintFeedState,
+} from "./app-helpers.ts";
 import { divisions, seedBracketLabels } from "./data.ts";
 import {
   createDivisionState,
@@ -8,25 +28,16 @@ import {
   placeTeamById,
   resetDivisionState,
 } from "./draw-engine.ts";
-import type { DivisionState, GroupState, SeedBracket, Team } from "./types.ts";
+import type {
+  DivisionState,
+  GroupState,
+  PlacementAnimationPlan,
+  SeedBracket,
+  Team,
+} from "./types.ts";
 
 const seedBracketOrder: SeedBracket[] = ["seed1", "seed2", "unseeded"];
 const slotLabels = ["Seed 1", "Seed 2", "Unseeded", "Unseeded"] as const;
-const ngbFlags: Record<string, string> = {
-  Austria: "🇦🇹",
-  Belgium: "🇧🇪",
-  Czechia: "🇨🇿",
-  France: "🇫🇷",
-  Germany: "🇩🇪",
-  Italy: "🇮🇹",
-  Norway: "🇳🇴",
-  Poland: "🇵🇱",
-  Slovenia: "🇸🇮",
-  Spain: "🇪🇸",
-  Switzerland: "🇨🇭",
-  Türkiye: "🇹🇷",
-  UK: "🇬🇧",
-};
 
 type DivisionId = (typeof divisions)[number]["id"];
 
@@ -105,10 +116,10 @@ export function App(): ReactElement {
     divisions[0]?.id ?? "division-1",
   );
   const [highlightedPlacementKey, setHighlightedPlacementKey] = useState<string | null>(null);
-  const [constraintFeed, setConstraintFeed] = useState<{
-    id: number;
-    messages: string[];
-  } | null>(null);
+  const [skipAnimationCues, setSkipAnimationCues] = useState<SkipAnimationCue[]>([]);
+  const [constraintFeed, setConstraintFeed] = useState<ConstraintFeedState | null>(null);
+  const [isPlacementAnimating, setIsPlacementAnimating] = useState(false);
+  const animationTimeoutIdsRef = useRef<number[]>([]);
   const activeState = divisionStates[activeDivisionId];
 
   if (activeState === undefined) {
@@ -121,6 +132,7 @@ export function App(): ReactElement {
   const latestMessage = activeState.messages[0] ?? "Ready for the next draw.";
   const noteLabel = constraintFeed === null ? "Latest note" : "Placement note";
   const noteMessage = constraintFeed === null ? latestMessage : constraintFeed.messages.join(" ");
+  const teamsBySeed = groupTeamsBySeed(undrawnTeams);
 
   useEffect(() => {
     if (constraintFeed === null) {
@@ -129,38 +141,72 @@ export function App(): ReactElement {
 
     const timeoutId = window.setTimeout(() => {
       setConstraintFeed((current) => (current?.id === constraintFeed.id ? null : current));
-    }, 9000);
+    }, 20000);
 
     return () => window.clearTimeout(timeoutId);
   }, [constraintFeed]);
 
+  useEffect(
+    () => () => {
+      clearAnimationTimeouts(animationTimeoutIdsRef.current);
+    },
+    [],
+  );
+
   const handleDraw = (teamId: string): void => {
-    setDivisionStates((currentStates) => {
-      const currentState = currentStates[activeDivisionId];
+    if (isPlacementAnimating) {
+      return;
+    }
 
-      if (currentState === undefined) {
-        return currentStates;
-      }
+    const currentState = divisionStates[activeDivisionId];
 
-      const result = placeTeamById(currentState, teamId);
-      const placementKey =
-        result.ok && result.updatedState !== currentState
-          ? findPlacementKey(currentState, result.updatedState, teamId)
-          : null;
-      const placementNotes = result.messages.filter(
-        (message) => !message.includes(" joins Group "),
-      );
+    if (currentState === undefined) {
+      return;
+    }
 
-      setHighlightedPlacementKey(placementKey);
-      setConstraintFeed(
-        placementNotes.length > 0 ? { id: Date.now(), messages: placementNotes } : null,
-      );
+    stopPlacementAnimation(
+      animationTimeoutIdsRef.current,
+      setSkipAnimationCues,
+      setIsPlacementAnimating,
+    );
 
-      return {
+    const result = placeTeamById(currentState, teamId);
+    setConstraintFeed(buildConstraintFeed(result.messages));
+
+    if (!result.ok || result.updatedState === currentState) {
+      setHighlightedPlacementKey(null);
+      return;
+    }
+
+    const placementKey = findPlacementKey(currentState, result.updatedState, teamId);
+    setHighlightedPlacementKey(null);
+    const applyPlacement = (): void => {
+      setDivisionStates((currentStates) => ({
         ...currentStates,
         [activeDivisionId]: result.updatedState,
-      };
-    });
+      }));
+      setHighlightedPlacementKey(placementKey);
+      stopPlacementAnimation(
+        animationTimeoutIdsRef.current,
+        setSkipAnimationCues,
+        setIsPlacementAnimating,
+      );
+    };
+
+    if (result.animationPlan === undefined || result.animationPlan.skipSteps.length === 0) {
+      applyPlacement();
+      return;
+    }
+
+    setIsPlacementAnimating(true);
+    schedulePlacementAnimation(
+      result.animationPlan,
+      setSkipAnimationCues,
+      animationTimeoutIdsRef.current,
+    );
+
+    const completionDelayMs = getPlacementAnimationDuration(result.animationPlan.skipSteps);
+    animationTimeoutIdsRef.current.push(window.setTimeout(applyPlacement, completionDelayMs));
   };
 
   const handleReset = (): void => {
@@ -200,6 +246,7 @@ export function App(): ReactElement {
                   aria-pressed={isActive}
                   className={divisionTabClasses[division.id]}
                   data-active={String(isActive)}
+                  disabled={isPlacementAnimating}
                   type="button"
                   onClick={() => setActiveDivisionId(division.id)}
                 >
@@ -216,7 +263,12 @@ export function App(): ReactElement {
               value={`${placedTeamCount}/${activeState.config.teams.length}`}
             />
             <StatCard label="Progress" value={`${progress}%`} />
-            <button className="reset-button" type="button" onClick={handleReset}>
+            <button
+              className="reset-button"
+              disabled={isPlacementAnimating}
+              type="button"
+              onClick={handleReset}
+            >
               Reset
             </button>
           </div>
@@ -243,10 +295,12 @@ export function App(): ReactElement {
           </div>
 
           <div className="group-grid">
-            {activeState.groups.map((group) => (
+            {activeState.groups.map((group, groupIndex) => (
               <GroupCard
+                groupIndex={groupIndex}
                 group={group}
                 highlightedPlacementKey={highlightedPlacementKey}
+                skipAnimationCues={skipAnimationCues}
                 key={group.name}
               />
             ))}
@@ -278,8 +332,9 @@ export function App(): ReactElement {
             {seedBracketOrder.map((seedBracket) => (
               <SeedSection
                 key={seedBracket}
+                disabled={isPlacementAnimating}
                 seedBracket={seedBracket}
-                teams={undrawnTeams.filter((team) => team.seed === seedBracket)}
+                teams={teamsBySeed[seedBracket]}
                 onDraw={handleDraw}
               />
             ))}
@@ -300,10 +355,12 @@ function StatCard(props: { label: string; value: string }): ReactElement {
 }
 
 function GroupCard(props: {
+  groupIndex: number;
   group: GroupState;
   highlightedPlacementKey: string | null;
+  skipAnimationCues: SkipAnimationCue[];
 }): ReactElement {
-  const placedCount = props.group.slots.filter((slot) => slot !== null).length;
+  const placedCount = getPlacedCount(props.group);
 
   return (
     <section className="group-card">
@@ -318,19 +375,36 @@ function GroupCard(props: {
           const label = slotLabels[slotIndex] ?? "Open";
           const slotKey = `${props.group.name}-${slotIndex}`;
           const isPlacedHighlight = props.highlightedPlacementKey === slotKey;
+          const isCueExisting = matchesExistingCue(
+            props.skipAnimationCues,
+            props.groupIndex,
+            slotIndex,
+          );
+          const isCueTarget = matchesTargetCue(
+            props.skipAnimationCues,
+            props.groupIndex,
+            slotIndex,
+          );
+          const slotClasses = getSlotRowClasses(
+            slotTone,
+            slot === null,
+            isPlacedHighlight,
+            isCueExisting,
+            isCueTarget,
+          );
 
           return (
-            <li
-              className={`slot-row slot-row--${slotTone}${slot === null ? " slot-row--empty" : ""}${isPlacedHighlight ? " slot-row--placed" : ""}`}
-              key={slotKey}
-            >
+            <li className={slotClasses} key={slotKey}>
               {slot === null ? (
-                <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
+                <>
+                  <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
+                  {renderSlotCuePreview(props.skipAnimationCues, props.groupIndex, slotIndex)}
+                </>
               ) : (
                 <div className="slot-team" title={`${slot.name} (${slot.ngb})`}>
                   <span
                     aria-label={slot.ngb}
-                    className={`slot-flag${getFlagModifierClass(slot.ngb)}`}
+                    className={`slot-flag${getFlagModifierClass(slot.ngb)}${isCueExisting ? " slot-flag--focus" : ""}`}
                   >
                     {getFlag(slot.ngb)}
                   </span>
@@ -348,6 +422,7 @@ function GroupCard(props: {
 }
 
 function SeedSection(props: {
+  disabled: boolean;
   seedBracket: SeedBracket;
   teams: Team[];
   onDraw: (teamId: string) => void;
@@ -374,6 +449,7 @@ function SeedSection(props: {
           props.teams.map((team) => (
             <button
               className={`team-button team-button--${props.seedBracket}`}
+              disabled={props.disabled}
               key={team.id}
               title={team.name}
               type="button"
@@ -393,52 +469,91 @@ function SeedSection(props: {
   );
 }
 
-function getFlag(ngb: string): string {
-  return ngbFlags[ngb] ?? "🏳️";
+function stopPlacementAnimation(
+  timeoutIds: number[],
+  setSkipAnimationCues: Dispatch<SetStateAction<SkipAnimationCue[]>>,
+  setIsPlacementAnimating: (value: boolean) => void,
+): void {
+  clearAnimationTimeouts(timeoutIds);
+  setSkipAnimationCues([]);
+  setIsPlacementAnimating(false);
 }
 
-function getFlagModifierClass(ngb: string): string {
-  return ngb === "Switzerland" ? " flag--swiss" : "";
-}
+function renderSlotCuePreview(
+  cues: SkipAnimationCue[],
+  groupIndex: number,
+  slotIndex: number,
+): ReactElement | null {
+  const cue = findTargetCue(cues, groupIndex, slotIndex);
 
-function getDivisionRuleSummary(state: DivisionState): string {
-  const rule = state.config.duplicateAllowance;
-
-  if (rule === undefined) {
-    return "No group may contain two teams from the same NGB.";
+  if (cue === null) {
+    return null;
   }
 
-  return `Exactly one group in ${state.config.shortName} must finish with two ${rule.ngb} teams. All other same-NGB clashes are still skipped.`;
-}
-
-function getPoolRuleChip(state: DivisionState): string {
-  const rule = state.config.duplicateAllowance;
-
-  if (rule === undefined) {
-    return "No duplicate NGBs";
+  if (cue.kind === "ngb_target" && cue.groupIndex === groupIndex && cue.slotIndex === slotIndex) {
+    return (
+      <span className="slot-cue slot-cue--blocked" title={`${cue.ngb} blocked here`}>
+        <span
+          aria-label={cue.ngb}
+          className={`slot-flag slot-cue__flag${getFlagModifierClass(cue.ngb)}`}
+        >
+          {getFlag(cue.ngb)}
+        </span>
+        <span aria-hidden="true" className="slot-cue__forbidden">
+          ⊘
+        </span>
+      </span>
+    );
   }
 
-  return `${rule.ngb}: 1 pair required`;
-}
-
-function findPlacementKey(
-  previousState: DivisionState,
-  nextState: DivisionState,
-  teamId: string,
-): string | null {
-  for (const [groupIndex, group] of nextState.groups.entries()) {
-    const previousGroup = previousState.groups[groupIndex];
-
-    for (const [slotIndex, team] of group.slots.entries()) {
-      if (team?.id !== teamId) {
-        continue;
-      }
-
-      if (previousGroup?.slots[slotIndex]?.id !== teamId) {
-        return `${group.name}-${slotIndex}`;
-      }
-    }
+  if (
+    cue.kind === "reserved_target" &&
+    cue.groupIndex === groupIndex &&
+    cue.slotIndex === slotIndex
+  ) {
+    return (
+      <span
+        className="slot-cue slot-cue--reserved"
+        title={`Reserved for ${cue.reservedNgbs.join(", ")}`}
+      >
+        {cue.reservedNgbs.map((ngb) => (
+          <span
+            aria-label={ngb}
+            className={`slot-flag slot-cue__flag${getFlagModifierClass(ngb)}`}
+            key={ngb}
+          >
+            {getFlag(ngb)}
+          </span>
+        ))}
+      </span>
+    );
   }
 
   return null;
+}
+
+function schedulePlacementAnimation(
+  animationPlan: PlacementAnimationPlan,
+  setSkipAnimationCues: Dispatch<SetStateAction<SkipAnimationCue[]>>,
+  timeoutIds: number[],
+): void {
+  for (const scheduledCue of buildScheduledSkipCues(animationPlan.skipSteps)) {
+    timeoutIds.push(
+      window.setTimeout(() => {
+        setSkipAnimationCues((currentCues) =>
+          currentCues.includes(scheduledCue.cue) ? currentCues : [...currentCues, scheduledCue.cue],
+        );
+      }, scheduledCue.atMs),
+    );
+    timeoutIds.push(
+      window.setTimeout(() => {
+        setSkipAnimationCues((currentCues) =>
+          currentCues.filter((activeCue) => activeCue !== scheduledCue.cue),
+        );
+      }, scheduledCue.atMs + scheduledCue.durationMs),
+    );
+  }
+
+  const clearAtMs = getPlacementAnimationDuration(animationPlan.skipSteps);
+  timeoutIds.push(window.setTimeout(() => setSkipAnimationCues([]), clearAtMs));
 }

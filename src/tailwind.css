@@ -124,7 +124,7 @@
   }
 
   .note-strip--constraint .note-strip__text {
-    animation: note-text-flash 5.5s ease-out both;
+    animation: note-text-flash 12s ease-out both;
   }
 
   .note-pill {
@@ -266,11 +266,16 @@
   .slot-row--placed {
     z-index: 12;
     transform-origin: center;
-    animation: slot-drop-in 1250ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: slot-drop-in 1600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
   .slot-row--placed::before {
     animation: slot-highlight-fade 20s linear both;
+  }
+
+  .slot-row--cue-existing,
+  .slot-row--cue-target {
+    z-index: 14;
   }
 
   .slot-team {
@@ -279,6 +284,10 @@
 
   .slot-flag {
     @apply inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-white text-[1.02rem] shadow-[0_4px_10px_rgba(15,23,42,0.08)];
+  }
+
+  .slot-flag--focus {
+    animation: slot-flag-focus 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
   .slot-row--seed1 {
@@ -319,6 +328,30 @@
 
   .slot-pill--unseeded {
     background: var(--unseeded-pill);
+  }
+
+  .slot-cue {
+    @apply pointer-events-none absolute left-3 top-1/2 z-[3] flex -translate-y-1/2 items-center gap-1;
+  }
+
+  .slot-cue--blocked {
+    animation: slot-cue-arrive 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .slot-cue--reserved {
+    animation: slot-cue-arrive 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .slot-cue__flag {
+    box-shadow:
+      0 18px 26px oklch(0.45 0.08 250 / 0.16),
+      0 0 0 3px color-mix(in oklch, white 88%, transparent);
+    transform: scale(1.2);
+  }
+
+  .slot-cue__forbidden {
+    @apply absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[0.68rem] leading-none font-black text-white shadow-[0_8px_18px_rgba(127,29,29,0.22)];
+    background: linear-gradient(135deg, oklch(0.58 0.22 24), oklch(0.5 0.19 12));
   }
 
   .rail-note {
@@ -400,6 +433,14 @@
   .empty-state {
     @apply rounded-[0.9rem] border border-dashed border-slate-300 bg-white/85 px-2.5 py-3 text-[0.72rem] font-semibold text-slate-700;
   }
+
+  .tab-button:disabled,
+  .reset-button:disabled,
+  .team-button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+    transform: none;
+  }
 }
 
 .rail-scroll::-webkit-scrollbar {
@@ -473,6 +514,47 @@
 
   100% {
     filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes slot-flag-focus {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 10px oklch(0.45 0.08 250 / 0.08);
+  }
+
+  55% {
+    transform: scale(1.42) translateZ(0);
+    box-shadow:
+      0 18px 30px oklch(0.45 0.08 250 / 0.18),
+      0 0 0 4px color-mix(in oklch, var(--primary-soft) 68%, white);
+  }
+
+  100% {
+    transform: scale(1.24);
+    box-shadow:
+      0 12px 18px oklch(0.45 0.08 250 / 0.14),
+      0 0 0 2px color-mix(in oklch, var(--primary-soft) 58%, white);
+  }
+}
+
+@keyframes slot-cue-arrive {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.84);
+    filter: saturate(0.92);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.08);
+    filter: saturate(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+    filter: saturate(1);
   }
 }
 

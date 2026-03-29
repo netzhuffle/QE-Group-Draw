@@ -2,15 +2,14 @@ import type {
   DivisionConfig,
   DivisionState,
   GroupState,
+  PlacementAnimationPlan,
+  PlacementAnimationStep,
+  PlacementCoordinate,
   PlacementResult,
   SeedBracket,
   Team,
 } from "./types.ts";
-
-interface PlacementOption {
-  groupIndex: number;
-  slotIndex: number;
-}
+type PlacementOption = PlacementCoordinate;
 
 interface CandidateAnalysis {
   eligiblePlacements: PlacementOption[];
@@ -20,6 +19,11 @@ interface CandidateAnalysis {
 
 interface CompletionResult {
   possible: boolean;
+  blockedTeam?: Team;
+}
+
+interface ForwardSkippedPlacement {
+  placement: PlacementOption;
   blockedTeam?: Team;
 }
 
@@ -66,7 +70,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
 
   const candidateAnalysis = analyzeCandidates(state.groups, team, state.config);
   const remainingTeams = getUndrawnTeams(state).filter((entry) => entry.id !== team.id);
-  const forwardSkipped: Array<{ groupIndex: number; blockedTeam?: Team }> = [];
+  const forwardSkipped: ForwardSkippedPlacement[] = [];
   let chosenPlacement: PlacementOption | undefined;
 
   for (const placement of candidateAnalysis.eligiblePlacements) {
@@ -81,7 +85,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
     }
 
     forwardSkipped.push({
-      groupIndex: placement.groupIndex,
+      placement,
       blockedTeam: completionResult.blockedTeam,
     });
   }
@@ -125,6 +129,13 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
       chosenPlacement.slotIndex,
     )}.`,
   );
+  const animationPlan = buildPlacementAnimationPlan(
+    state.groups,
+    team,
+    candidateAnalysis,
+    forwardSkipped,
+    chosenPlacement,
+  );
 
   return {
     ok: true,
@@ -135,6 +146,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
       messages: limitMessages([...messages.toReversed(), ...state.messages]),
     },
     messages,
+    animationPlan,
   };
 }
 
@@ -419,7 +431,7 @@ function buildPlacementMessages(
   team: Team,
   config: DivisionConfig,
   candidateAnalysis: CandidateAnalysis,
-  forwardSkipped: Array<{ groupIndex: number; blockedTeam?: Team }>,
+  forwardSkipped: ForwardSkippedPlacement[],
   chosenPlacement: PlacementOption | undefined,
 ): string[] {
   const messages: string[] = [];
@@ -467,7 +479,7 @@ function buildPlacementMessages(
 
     messages.push(
       `Skipping ${formatGroupNames(
-        forwardSkipped.map((entry) => entry.groupIndex),
+        forwardSkipped.map((entry) => entry.placement.groupIndex),
         config,
       )} for ${team.name}${blockerSuffix}; placing them in Group ${
         config.groupNames[chosenPlacement.groupIndex]
@@ -503,6 +515,61 @@ function comparePlacements(left: PlacementOption, right: PlacementOption): numbe
 function formatGroupNames(groupIndexes: number[], config: DivisionConfig): string {
   const names = groupIndexes.map((groupIndex) => `Group ${config.groupNames[groupIndex]}`);
   return joinNaturalList(names);
+}
+
+function buildPlacementAnimationPlan(
+  groups: GroupState[],
+  team: Team,
+  candidateAnalysis: CandidateAnalysis,
+  forwardSkipped: ForwardSkippedPlacement[],
+  chosenPlacement: PlacementOption,
+): PlacementAnimationPlan | undefined {
+  const skipSteps: PlacementAnimationStep[] = [];
+
+  for (const placement of candidateAnalysis.skippedForNgb) {
+    if (!affectsChosenPlacement(placement, chosenPlacement)) {
+      continue;
+    }
+
+    const conflictingSlotIndexes =
+      groups[placement.groupIndex]?.slots.flatMap((entry, slotIndex) =>
+        entry?.ngb === team.ngb ? [slotIndex] : [],
+      ) ?? [];
+
+    skipSteps.push({
+      kind: "ngb_limit",
+      placement,
+      conflictingSlotIndexes,
+      ngb: team.ngb,
+    });
+  }
+
+  for (const entry of forwardSkipped) {
+    if (!affectsChosenPlacement(entry.placement, chosenPlacement)) {
+      continue;
+    }
+
+    const reservedNgbs = entry.blockedTeam?.ngb === undefined ? [] : [entry.blockedTeam.ngb];
+
+    skipSteps.push({
+      kind: "reserved",
+      placement: entry.placement,
+      reservedNgbs,
+    });
+  }
+
+  if (skipSteps.length === 0) {
+    return undefined;
+  }
+
+  return {
+    teamId: team.id,
+    teamNgb: team.ngb,
+    chosenPlacement,
+    skipSteps: skipSteps.toSorted((left, right) =>
+      comparePlacements(left.placement, right.placement),
+    ),
+  };
 }
 
 function joinNaturalList(values: string[]): string {

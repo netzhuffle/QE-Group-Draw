@@ -33,8 +33,36 @@ export interface DivisionState {
   messages: string[];
 }
 
+export interface PlacementCoordinate {
+  groupIndex: number;
+  slotIndex: number;
+}
+
+export interface NgbLimitSkipAnimationStep {
+  kind: "ngb_limit";
+  placement: PlacementCoordinate;
+  conflictingSlotIndexes: number[];
+  ngb: string;
+}
+
+export interface ReservedSlotSkipAnimationStep {
+  kind: "reserved";
+  placement: PlacementCoordinate;
+  reservedNgbs: string[];
+}
+
+export type PlacementAnimationStep = NgbLimitSkipAnimationStep | ReservedSlotSkipAnimationStep;
+
+export interface PlacementAnimationPlan {
+  teamId: string;
+  teamNgb: string;
+  chosenPlacement: PlacementCoordinate;
+  skipSteps: PlacementAnimationStep[];
+}
+
 export interface PlacementResult {
   ok: boolean;
   updatedState: DivisionState;
   messages: string[];
+  animationPlan?: PlacementAnimationPlan;
 }

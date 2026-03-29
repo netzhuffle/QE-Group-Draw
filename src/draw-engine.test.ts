@@ -67,6 +67,14 @@ describe("placeTeamById", () => {
     expect(result.ok).toBe(true);
     expect(result.updatedState.groups[1]?.slots[1]?.name).toBe("Pick");
     expect(result.messages.join(" ")).toContain("Skipping Group A");
+    expect(result.animationPlan?.skipSteps).toEqual([
+      {
+        kind: "ngb_limit",
+        placement: { groupIndex: 0, slotIndex: 1 },
+        conflictingSlotIndexes: [0],
+        ngb: "France",
+      },
+    ]);
   });
 
   test("allows one German duplicate group when the pair rule is active", () => {
@@ -119,6 +127,13 @@ describe("placeTeamById", () => {
     expect(result.ok).toBe(true);
     expect(result.updatedState.groups[2]?.slots[1]?.name).toBe("Drawn Team");
     expect(result.messages.join(" ")).toContain("Spain");
+    expect(result.animationPlan?.skipSteps).toEqual([
+      {
+        kind: "reserved",
+        placement: { groupIndex: 1, slotIndex: 1 },
+        reservedNgbs: ["Spain"],
+      },
+    ]);
   });
 
   test("fills first unseeded slots across all groups before second unseeded slots", () => {
@@ -140,6 +155,7 @@ describe("placeTeamById", () => {
     expect(state.groups[1]?.slots[2]?.name).toBe("Bravo");
     expect(state.groups[2]?.slots[2]?.name).toBe("Charlie");
     expect(fourthResult.updatedState.groups[0]?.slots[3]?.name).toBe("Delta");
+    expect(fourthResult.animationPlan).toBeUndefined();
   });
 
   test("does not report same-ngb skips from groups after the chosen placement", () => {

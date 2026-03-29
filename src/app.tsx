@@ -20,12 +20,12 @@ import {
   getSlotRowClasses,
   groupTeamsBySeed,
   matchesExistingCue,
-  matchesTargetCue,
   type ConstraintFeedState,
 } from "./app-helpers.ts";
 import { divisions, seedBracketLabels } from "./data.ts";
 import {
   createDivisionState,
+  getSlotReservations,
   getUndrawnTeams,
   placeTeamById,
   resetDivisionState,
@@ -62,6 +62,8 @@ type ThemeVariable =
   | "--seed2-pill"
   | "--unseeded-pill";
 type ThemeStyle = CSSProperties & Record<ThemeVariable, string>;
+type ReservationMap = Record<string, string[]>;
+const emptyReservationMap: ReservationMap = {};
 
 const divisionThemeStyles: Record<DivisionId, ThemeStyle> = {
   "division-1": {
@@ -120,6 +122,23 @@ export function App(): ReactElement {
   const [highlightedPlacementKey, setHighlightedPlacementKey] = useState<string | null>(null);
   const [skipAnimationCues, setSkipAnimationCues] = useState<SkipAnimationCue[]>([]);
   const [constraintFeed, setConstraintFeed] = useState<ConstraintFeedState | null>(null);
+  const [visibleReservations, setVisibleReservations] = useState<
+    Record<DivisionId, ReservationMap>
+  >(
+    () =>
+      Object.fromEntries(
+        divisions.map((division) => [division.id, {} as ReservationMap]),
+      ) as Record<DivisionId, ReservationMap>,
+  );
+  const [animatedReservationKeys, setAnimatedReservationKeys] = useState<
+    Record<DivisionId, string[]>
+  >(
+    () =>
+      Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])) as Record<
+        DivisionId,
+        string[]
+      >,
+  );
   const [isPlacementAnimating, setIsPlacementAnimating] = useState(false);
   const animationTimeoutIdsRef = useRef<number[]>([]);
   const activeState = divisionStates[activeDivisionId];
@@ -136,6 +155,8 @@ export function App(): ReactElement {
   const noteMessage = constraintFeed === null ? latestMessage : constraintFeed.messages.join(" ");
   const noteSegments = buildNoteTextSegments(noteMessage);
   const teamsBySeed = groupTeamsBySeed(undrawnTeams);
+  const activeAnimatedReservationKeys = animatedReservationKeys[activeDivisionId] ?? [];
+  const activeReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
 
   useEffect(() => {
     if (constraintFeed === null) {
@@ -182,6 +203,13 @@ export function App(): ReactElement {
     }
 
     const placementKey = findPlacementKey(currentState, result.updatedState, teamId);
+    const nextReservationMap = mergeReservationMaps(
+      buildReservationMap(result.updatedState),
+      buildStrategicReservationMap(result.updatedState, result.animationPlan),
+    );
+    const currentReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
+    const keptReservationMap = keepVisibleReservations(currentReservationMap, nextReservationMap);
+    const newReservationMap = getNewReservations(currentReservationMap, nextReservationMap);
     setHighlightedPlacementKey(null);
     const applyPlacement = (): void => {
       setDivisionStates((currentStates) => ({
@@ -189,6 +217,45 @@ export function App(): ReactElement {
         [activeDivisionId]: result.updatedState,
       }));
       setHighlightedPlacementKey(placementKey);
+      setVisibleReservations((currentReservations) => ({
+        ...currentReservations,
+        [activeDivisionId]: keptReservationMap,
+      }));
+      setAnimatedReservationKeys((currentKeys) => ({
+        ...currentKeys,
+        [activeDivisionId]: [],
+      }));
+
+      if (Object.keys(newReservationMap).length === 0) {
+        return;
+      }
+
+      const newReservationKeys = Object.keys(newReservationMap);
+      animationTimeoutIdsRef.current.push(
+        window.setTimeout(() => {
+          setVisibleReservations((currentReservations) => ({
+            ...currentReservations,
+            [activeDivisionId]: {
+              ...currentReservations[activeDivisionId],
+              ...newReservationMap,
+            },
+          }));
+          setAnimatedReservationKeys((currentKeys) => ({
+            ...currentKeys,
+            [activeDivisionId]: newReservationKeys,
+          }));
+        }, 1000),
+      );
+      animationTimeoutIdsRef.current.push(
+        window.setTimeout(() => {
+          setAnimatedReservationKeys((currentKeys) => ({
+            ...currentKeys,
+            [activeDivisionId]: (currentKeys[activeDivisionId] ?? []).filter(
+              (key) => !newReservationKeys.includes(key),
+            ),
+          }));
+        }, 2600),
+      );
     };
 
     if (result.animationPlan === undefined || result.animationPlan.skipSteps.length === 0) {
@@ -225,6 +292,14 @@ export function App(): ReactElement {
     setDivisionStates((currentStates) => ({
       ...currentStates,
       [activeDivisionId]: resetDivisionState(currentState.config),
+    }));
+    setVisibleReservations((currentReservations) => ({
+      ...currentReservations,
+      [activeDivisionId]: {},
+    }));
+    setAnimatedReservationKeys((currentKeys) => ({
+      ...currentKeys,
+      [activeDivisionId]: [],
     }));
   };
 
@@ -312,6 +387,8 @@ export function App(): ReactElement {
                 groupIndex={groupIndex}
                 group={group}
                 highlightedPlacementKey={highlightedPlacementKey}
+                animatedReservationKeys={activeAnimatedReservationKeys}
+                reservationMap={activeReservationMap}
                 skipAnimationCues={skipAnimationCues}
                 key={group.name}
               />
@@ -370,6 +447,8 @@ function GroupCard(props: {
   groupIndex: number;
   group: GroupState;
   highlightedPlacementKey: string | null;
+  animatedReservationKeys: string[];
+  reservationMap: ReservationMap;
   skipAnimationCues: SkipAnimationCue[];
 }): ReactElement {
   const placedCount = getPlacedCount(props.group);
@@ -387,16 +466,15 @@ function GroupCard(props: {
           const label = slotLabels[slotIndex] ?? "Open";
           const slotKey = `${props.group.name}-${slotIndex}`;
           const isPlacedHighlight = props.highlightedPlacementKey === slotKey;
+          const reservationNgbs = props.reservationMap[slotKey] ?? [];
+          const targetCue = findTargetCue(props.skipAnimationCues, props.groupIndex, slotIndex);
           const isCueExisting = matchesExistingCue(
             props.skipAnimationCues,
             props.groupIndex,
             slotIndex,
           );
-          const isCueTarget = matchesTargetCue(
-            props.skipAnimationCues,
-            props.groupIndex,
-            slotIndex,
-          );
+          const isCueTarget = targetCue !== null;
+          const isReservationCue = targetCue?.kind === "reserved_target";
           const slotClasses = getSlotRowClasses(
             slotTone,
             slot === null,
@@ -408,10 +486,32 @@ function GroupCard(props: {
           return (
             <li className={slotClasses} key={slotKey}>
               {slot === null ? (
-                <>
+                <div className="slot-empty">
+                  {reservationNgbs.length > 0 ? (
+                    <span className="slot-empty__reservations">
+                      {reservationNgbs.map((ngb) => (
+                        <span
+                          aria-label={ngb}
+                          className={`slot-flag${getFlagModifierClass(ngb)}${
+                            isReservationCue ? " slot-flag--focus" : ""
+                          }${
+                            props.animatedReservationKeys.includes(slotKey)
+                              ? " slot-flag--reservation-drop"
+                              : ""
+                          }`}
+                          key={`${slotKey}-${ngb}`}
+                          title={`Reserved for ${ngb}`}
+                        >
+                          {getFlag(ngb)}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
                   <span className={`slot-pill slot-pill--${slotTone}`}>{label}</span>
-                  {renderSlotCuePreview(props.skipAnimationCues, props.groupIndex, slotIndex)}
-                </>
+                  {renderSlotCuePreview(targetCue, reservationNgbs)}
+                </div>
               ) : (
                 <div className="slot-team" title={`${slot.name} (${slot.ngb})`}>
                   <span
@@ -492,17 +592,14 @@ function stopPlacementAnimation(
 }
 
 function renderSlotCuePreview(
-  cues: SkipAnimationCue[],
-  groupIndex: number,
-  slotIndex: number,
+  cue: SkipAnimationCue | null,
+  visibleReservationNgbs: string[],
 ): ReactElement | null {
-  const cue = findTargetCue(cues, groupIndex, slotIndex);
-
   if (cue === null) {
     return null;
   }
 
-  if (cue.kind === "ngb_target" && cue.groupIndex === groupIndex && cue.slotIndex === slotIndex) {
+  if (cue.kind === "ngb_target") {
     return (
       <span className="slot-cue slot-cue--blocked" title={`${cue.ngb} blocked here`}>
         <span
@@ -518,11 +615,7 @@ function renderSlotCuePreview(
     );
   }
 
-  if (
-    cue.kind === "reserved_target" &&
-    cue.groupIndex === groupIndex &&
-    cue.slotIndex === slotIndex
-  ) {
+  if (cue.kind === "reserved_target" && visibleReservationNgbs.length === 0) {
     return (
       <span
         className="slot-cue slot-cue--reserved"
@@ -565,4 +658,82 @@ function schedulePlacementAnimation(
       }, scheduledCue.atMs + scheduledCue.durationMs),
     );
   }
+}
+
+function buildReservationMap(state: DivisionState): ReservationMap {
+  return getSlotReservations(state).reduce<ReservationMap>((reservationMap, reservation) => {
+    const groupName = state.groups[reservation.groupIndex]?.name;
+
+    if (groupName === undefined) {
+      return reservationMap;
+    }
+
+    reservationMap[`${groupName}-${reservation.slotIndex}`] = reservation.reservedNgbs;
+    return reservationMap;
+  }, {});
+}
+
+function buildStrategicReservationMap(
+  state: DivisionState,
+  animationPlan: PlacementAnimationPlan | undefined,
+): ReservationMap {
+  if (animationPlan === undefined) {
+    return emptyReservationMap;
+  }
+
+  return animationPlan.skipSteps.reduce<ReservationMap>((reservationMap, step) => {
+    if (step.kind !== "reserved" || step.reservedNgbs.length !== 1) {
+      return reservationMap;
+    }
+
+    const groupName = state.groups[step.placement.groupIndex]?.name;
+
+    if (groupName === undefined) {
+      return reservationMap;
+    }
+
+    reservationMap[`${groupName}-${step.placement.slotIndex}`] = step.reservedNgbs;
+    return reservationMap;
+  }, {});
+}
+
+function mergeReservationMaps(...reservationMaps: ReservationMap[]): ReservationMap {
+  return reservationMaps.reduce<ReservationMap>((mergedMap, reservationMap) => {
+    Object.assign(mergedMap, reservationMap);
+    return mergedMap;
+  }, {});
+}
+
+function keepVisibleReservations(
+  currentReservationMap: ReservationMap,
+  nextReservationMap: ReservationMap,
+): ReservationMap {
+  return Object.fromEntries(
+    Object.entries(currentReservationMap).filter(([key, reservedNgbs]) =>
+      reservationSetsMatch(reservedNgbs, nextReservationMap[key]),
+    ),
+  );
+}
+
+function getNewReservations(
+  currentReservationMap: ReservationMap,
+  nextReservationMap: ReservationMap,
+): ReservationMap {
+  return Object.fromEntries(
+    Object.entries(nextReservationMap).filter(
+      ([key, reservedNgbs]) => !reservationSetsMatch(reservedNgbs, currentReservationMap[key]),
+    ),
+  );
+}
+
+function reservationSetsMatch(left: string[] | undefined, right: string[] | undefined): boolean {
+  if (left === undefined || right === undefined) {
+    return left === right;
+  }
+
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((ngb, index) => ngb === right[index]);
 }

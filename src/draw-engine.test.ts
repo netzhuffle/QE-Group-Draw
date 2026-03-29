@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { divisions } from "./data.ts";
-import { createDivisionState, placeTeamById } from "./draw-engine.ts";
-import type { DivisionConfig, SeedBracket, Team } from "./types.ts";
+import { createDivisionState, getSlotReservations, placeTeamById } from "./draw-engine.ts";
+import type { DivisionConfig, SeedBracket, SlotReservation, Team } from "./types.ts";
 
 function createTeam(id: string, seed: SeedBracket, ngb: string, name = id): Team {
   return {
@@ -133,6 +133,83 @@ describe("placeTeamById", () => {
         placement: { groupIndex: 1, slotIndex: 1 },
         reservedNgbs: ["Spain"],
       },
+    ]);
+    expect(getSlotReservations(result.updatedState)).toEqual([
+      {
+        groupIndex: 1,
+        slotIndex: 1,
+        reservedNgbs: ["Spain"],
+      } satisfies SlotReservation,
+    ]);
+  });
+
+  test("marks slots whose remaining valid candidates all share one NGB", () => {
+    const division = divisions.find((entry) => entry.id === "division-1");
+
+    if (division === undefined) {
+      throw new Error("Missing Division 1 fixture.");
+    }
+
+    const drawOrder = [
+      "Ghent Gargoyles",
+      "Titans Paris",
+      "Malaka Vikings",
+      "Ruhr Phoenix",
+      "Braunschweiger Broomicorns",
+      "Werewolves of London Firsts",
+      "Paris Frog",
+      "Sagene IF 1",
+      "Toulouse Minotaures",
+      "Siena Ghibellines",
+      "London QC",
+      "Rheinos Bonn",
+      "Vienna Vanguards",
+      "BEL Flamingos",
+    ] as const;
+
+    let state = createDivisionState(division);
+
+    for (const teamName of drawOrder) {
+      const team = division.teams.find((entry) => entry.name === teamName);
+
+      if (team === undefined) {
+        throw new Error(`Missing fixture for ${teamName}.`);
+      }
+
+      const result = placeTeamById(state, team.id);
+
+      if (!result.ok) {
+        throw new Error(`Failed to place ${teamName}: ${result.messages.join(" | ")}`);
+      }
+
+      state = result.updatedState;
+    }
+
+    const metu = division.teams.find((entry) => entry.name === "METU Unicorns");
+
+    if (metu === undefined) {
+      throw new Error("Missing fixture for METU Unicorns.");
+    }
+
+    const result = placeTeamById(state, metu.id);
+
+    expect(result.ok).toBe(true);
+    expect(getSlotReservations(result.updatedState)).toEqual([
+      {
+        groupIndex: 0,
+        slotIndex: 3,
+        reservedNgbs: ["Germany"],
+      } satisfies SlotReservation,
+      {
+        groupIndex: 1,
+        slotIndex: 3,
+        reservedNgbs: ["Germany"],
+      } satisfies SlotReservation,
+      {
+        groupIndex: 3,
+        slotIndex: 3,
+        reservedNgbs: ["UK"],
+      } satisfies SlotReservation,
     ]);
   });
 

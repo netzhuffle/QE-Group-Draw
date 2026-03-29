@@ -267,7 +267,15 @@
     grid-template-columns: 1fr;
   }
 
-  .slot-row--empty .slot-pill {
+  .slot-empty {
+    @apply col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2;
+  }
+
+  .slot-empty__reservations {
+    @apply flex min-w-0 items-center gap-1;
+  }
+
+  .slot-empty .slot-pill {
     justify-self: end;
   }
 
@@ -296,6 +304,11 @@
 
   .slot-flag--focus {
     animation: slot-flag-focus 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .slot-flag--reservation-drop {
+    z-index: 2;
+    animation: slot-drop-in 1600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
   .slot-row--seed1 {
@@ -343,10 +356,6 @@
   }
 
   .slot-cue--blocked {
-    animation: slot-cue-arrive 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-
-  .slot-cue--reserved {
     animation: slot-cue-arrive 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 

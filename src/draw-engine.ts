@@ -7,6 +7,7 @@ import type {
   PlacementCoordinate,
   PlacementResult,
   SeedBracket,
+  SlotReservation,
   Team,
 } from "./types.ts";
 type PlacementOption = PlacementCoordinate;
@@ -24,7 +25,7 @@ interface CompletionResult {
 
 interface ForwardSkippedPlacement {
   placement: PlacementOption;
-  blockedTeam?: Team;
+  reservedNgbs: string[];
 }
 
 const unseededSlotIndexes = [2, 3] as const;
@@ -70,6 +71,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
 
   const candidateAnalysis = analyzeCandidates(state.groups, team, state.config);
   const remainingTeams = getUndrawnTeams(state).filter((entry) => entry.id !== team.id);
+  const slotCandidateNgbMap = buildSlotCandidateNgbMap(state.groups, remainingTeams, state.config);
   const forwardSkipped: ForwardSkippedPlacement[] = [];
   let chosenPlacement: PlacementOption | undefined;
 
@@ -86,7 +88,7 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
 
     forwardSkipped.push({
       placement,
-      blockedTeam: completionResult.blockedTeam,
+      reservedNgbs: getReservedNgbsForPlacement(slotCandidateNgbMap, placement),
     });
   }
 
@@ -148,6 +150,57 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
     messages,
     animationPlan,
   };
+}
+
+export function getSlotReservations(state: DivisionState): SlotReservation[] {
+  const remainingTeams = getUndrawnTeams(state);
+  return [...buildSlotCandidateNgbMap(state.groups, remainingTeams, state.config).entries()]
+    .filter(([, candidateNgbs]) => candidateNgbs.size === 1)
+    .flatMap(([key, reservedNgbs]) => {
+      const [groupIndexText, slotIndexText] = key.split("-");
+      const groupIndex = Number(groupIndexText);
+      const slotIndex = Number(slotIndexText);
+
+      if (Number.isNaN(groupIndex) || Number.isNaN(slotIndex)) {
+        return [];
+      }
+
+      return [
+        {
+          groupIndex,
+          slotIndex,
+          reservedNgbs: [...reservedNgbs].toSorted(),
+        } satisfies SlotReservation,
+      ];
+    })
+    .toSorted((left, right) => comparePlacements(left, right));
+}
+
+function buildSlotCandidateNgbMap(
+  groups: GroupState[],
+  remainingTeams: Team[],
+  config: DivisionConfig,
+): Map<string, Set<string>> {
+  const slotCandidateNgbs = new Map<string, Set<string>>();
+
+  for (const team of remainingTeams) {
+    const candidateAnalysis = analyzeCandidates(groups, team, config);
+    const otherRemainingTeams = remainingTeams.filter((entry) => entry.id !== team.id);
+    const validPlacements = candidateAnalysis.eligiblePlacements.filter((placement) => {
+      const nextGroups = cloneGroups(groups);
+      nextGroups[placement.groupIndex]?.slots.splice(placement.slotIndex, 1, team);
+      return canCompleteDraw(nextGroups, otherRemainingTeams, config).possible;
+    });
+
+    for (const placement of validPlacements) {
+      const key = buildPlacementKey(placement);
+      const candidateNgbs = slotCandidateNgbs.get(key) ?? new Set<string>();
+      candidateNgbs.add(team.ngb);
+      slotCandidateNgbs.set(key, candidateNgbs);
+    }
+  }
+
+  return slotCandidateNgbs;
 }
 
 function buildReadyMessage(config: DivisionConfig): string {
@@ -465,13 +518,7 @@ function buildPlacementMessages(
   }
 
   if (forwardSkipped.length > 0 && chosenPlacement !== undefined) {
-    const blockedNgbs = [
-      ...new Set(
-        forwardSkipped
-          .map((entry) => entry.blockedTeam?.ngb)
-          .filter((entry): entry is string => entry !== undefined),
-      ),
-    ];
+    const blockedNgbs = [...new Set(forwardSkipped.flatMap((entry) => entry.reservedNgbs))];
     const blockerSuffix =
       blockedNgbs.length > 0
         ? `, preserving a future slot for ${joinNaturalList(blockedNgbs)}`
@@ -549,12 +596,10 @@ function buildPlacementAnimationPlan(
       continue;
     }
 
-    const reservedNgbs = entry.blockedTeam?.ngb === undefined ? [] : [entry.blockedTeam.ngb];
-
     skipSteps.push({
       kind: "reserved",
       placement: entry.placement,
-      reservedNgbs,
+      reservedNgbs: entry.reservedNgbs,
     });
   }
 
@@ -586,6 +631,19 @@ function joinNaturalList(values: string[]): string {
   }
 
   return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
+}
+
+function buildPlacementKey(placement: PlacementCoordinate): string {
+  return `${placement.groupIndex}-${placement.slotIndex}`;
+}
+
+function getReservedNgbsForPlacement(
+  slotCandidateNgbMap: Map<string, Set<string>>,
+  placement: PlacementCoordinate,
+): string[] {
+  return [
+    ...(slotCandidateNgbMap.get(buildPlacementKey(placement)) ?? new Set<string>()),
+  ].toSorted();
 }
 
 function slotLabel(slotIndex: number): string {

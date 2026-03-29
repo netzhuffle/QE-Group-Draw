@@ -38,6 +38,12 @@ export interface PlacementCoordinate {
   slotIndex: number;
 }
 
+export interface SlotReservation {
+  groupIndex: number;
+  slotIndex: number;
+  reservedNgbs: string[];
+}
+
 export interface NgbLimitSkipAnimationStep {
   kind: "ngb_limit";
   placement: PlacementCoordinate;

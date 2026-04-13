@@ -380,19 +380,6 @@
     @apply mt-1 text-[0.68rem] leading-4 font-medium text-slate-700;
   }
 
-  .chip-row {
-    @apply mb-1.5 flex flex-wrap gap-1;
-  }
-
-  .rule-chip {
-    @apply rounded-full border border-white/70 bg-white/95 px-2 py-0.5 text-[0.58rem] font-black text-slate-700 shadow-[0_5px_10px_rgba(15,23,42,0.05)];
-  }
-
-  .rule-chip--accent {
-    @apply text-white;
-    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
-  }
-
   .rail-scroll {
     @apply min-h-0 overflow-y-auto pr-1;
   }

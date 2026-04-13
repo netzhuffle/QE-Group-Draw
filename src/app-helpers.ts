@@ -193,17 +193,13 @@ export function getDivisionRuleSummary(state: DivisionState): string {
     return "No group may contain two teams from the same NGB.";
   }
 
-  return `Exactly one group in ${state.config.shortName} must finish with two ${rule.ngb} teams. All other same-NGB clashes are still skipped.`;
-}
+  const hasOpenSpot = state.config.teams.some(
+    (team) => team.name === "OPEN SPOT" || team.ngb === "UNKNOWN",
+  );
 
-export function getPoolRuleChip(state: DivisionState): string {
-  const rule = state.config.duplicateAllowance;
-
-  if (rule === undefined) {
-    return "No duplicate NGBs";
-  }
-
-  return `${rule.ngb}: 1 pair required`;
+  return hasOpenSpot
+    ? `Exactly 1 ${rule.ngb} pair required. Other NGBs may not double up. 1 open spot could add another pair.`
+    : `Exactly 1 ${rule.ngb} pair required. Other NGBs may not double up.`;
 }
 
 export function findPlacementKey(

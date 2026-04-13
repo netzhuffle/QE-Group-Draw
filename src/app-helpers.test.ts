@@ -5,6 +5,7 @@ import {
   buildNoteTextSegments,
   findTargetCue,
   findPlacementKey,
+  getDivisionRuleSummary,
   getSlotRowClasses,
   groupTeamsBySeed,
   matchesExistingCue,
@@ -12,10 +13,10 @@ import {
 } from "./app-helpers.ts";
 import type { DivisionState, Team } from "./types.ts";
 
-function createTeam(id: string, seed: Team["seed"], ngb: string): Team {
+function createTeam(id: string, seed: Team["seed"], ngb: string, name = id): Team {
   return {
     id,
-    name: id,
+    name,
     ngb,
     ranking: id,
     seed,
@@ -139,5 +140,35 @@ describe("app helpers", () => {
     };
 
     expect(findPlacementKey(previousState, nextState, "alpha")).toBe("A-0");
+  });
+
+  test("builds division rule summary for pair rule divisions with an open spot", () => {
+    const state: DivisionState = {
+      config: {
+        id: "division-1",
+        name: "Division 1",
+        shortName: "Division 1",
+        groupNames: ["A", "B"],
+        duplicateAllowance: {
+          ngb: "Germany",
+          requiredGroupsWithPair: 1,
+          maxTeamsPerGroup: 2,
+        },
+        teams: [
+          createTeam("alpha", "seed1", "Belgium"),
+          createTeam("open", "unseeded", "UNKNOWN", "OPEN SPOT"),
+        ],
+      },
+      groups: [
+        { name: "A", slots: [null, null, null, null] },
+        { name: "B", slots: [null, null, null, null] },
+      ],
+      placedTeamIds: new Set(),
+      messages: [],
+    };
+
+    expect(getDivisionRuleSummary(state)).toBe(
+      "Exactly 1 Germany pair required. Other NGBs may not double up. 1 open spot could add another pair.",
+    );
   });
 });

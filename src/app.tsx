@@ -16,7 +16,6 @@ import {
   findPlacementKey,
   getDivisionRuleSummary,
   getPlacedCount,
-  getPoolRuleChip,
   getSlotRowClasses,
   groupTeamsBySeed,
   matchesExistingCue,
@@ -406,13 +405,6 @@ export function App(): ReactElement {
           <div className="rail-note">
             <span className="note-pill">Rule</span>
             <p>{getDivisionRuleSummary(activeState)}</p>
-          </div>
-
-          <div className="chip-row">
-            <span className="rule-chip">A to F order</span>
-            <span className="rule-chip">Seeded slots locked</span>
-            <span className="rule-chip">Future-safe draw</span>
-            <span className="rule-chip rule-chip--accent">{getPoolRuleChip(activeState)}</span>
           </div>
 
           <div className="rail-scroll">

@@ -5,7 +5,6 @@ import {
   buildScheduledSkipCues,
   clearAnimationTimeouts,
   getPlacementAnimationDuration,
-  getSkipCueLifetime,
   type SkipAnimationCue,
 } from "./app-animation.ts";
 import { getFlag, getFlagModifierClass } from "./app-flags.ts";
@@ -136,8 +135,15 @@ export function App(): ReactElement {
         string[]
       >,
   );
-  const [isPlacementAnimating, setIsPlacementAnimating] = useState(false);
+  const [isPlacementPending, setIsPlacementPending] = useState(false);
   const animationTimeoutIdsRef = useRef<number[]>([]);
+  const pendingDrawRef = useRef<{ divisionId: DivisionId; teamId: string } | null>(null);
+  const queuedDrawsRef = useRef(
+    Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])) as Record<
+      DivisionId,
+      string[]
+    >,
+  );
   const activeState = divisionStates[activeDivisionId];
 
   if (activeState === undefined) {
@@ -174,28 +180,21 @@ export function App(): ReactElement {
     [],
   );
 
-  const handleDraw = (teamId: string): void => {
-    if (isPlacementAnimating) {
-      return;
-    }
-
-    const currentState = divisionStates[activeDivisionId];
-
-    if (currentState === undefined) {
-      return;
-    }
-
-    stopPlacementAnimation(
-      animationTimeoutIdsRef.current,
-      setSkipAnimationCues,
-      setIsPlacementAnimating,
-    );
+  const processDraw = (
+    divisionId: DivisionId,
+    currentState: DivisionState,
+    currentReservationMap: ReservationMap,
+    teamId: string,
+  ): void => {
+    pendingDrawRef.current = { divisionId, teamId };
+    setIsPlacementPending(true);
 
     const result = placeTeamById(currentState, teamId);
     setConstraintFeed(buildConstraintFeed(result.messages));
 
     if (!result.ok || result.updatedState === currentState) {
-      setHighlightedPlacementKey(null);
+      pendingDrawRef.current = null;
+      setIsPlacementPending(false);
       return;
     }
 
@@ -204,26 +203,29 @@ export function App(): ReactElement {
       buildReservationMap(result.updatedState),
       buildStrategicReservationMap(result.updatedState, result.animationPlan),
     );
-    const currentReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
     const keptReservationMap = keepVisibleReservations(currentReservationMap, nextReservationMap);
     const newReservationMap = getNewReservations(currentReservationMap, nextReservationMap);
+    const effectiveReservationMap = mergeReservationMaps(keptReservationMap, newReservationMap);
     setHighlightedPlacementKey(null);
     const applyPlacement = (): void => {
       setDivisionStates((currentStates) => ({
         ...currentStates,
-        [activeDivisionId]: result.updatedState,
+        [divisionId]: result.updatedState,
       }));
       setHighlightedPlacementKey(placementKey);
       setVisibleReservations((currentReservations) => ({
         ...currentReservations,
-        [activeDivisionId]: keptReservationMap,
+        [divisionId]: keptReservationMap,
       }));
       setAnimatedReservationKeys((currentKeys) => ({
         ...currentKeys,
-        [activeDivisionId]: [],
+        [divisionId]: [],
       }));
+      pendingDrawRef.current = null;
+      setIsPlacementPending(false);
 
       if (Object.keys(newReservationMap).length === 0) {
+        queueNextDraw(divisionId, result.updatedState, effectiveReservationMap);
         return;
       }
 
@@ -232,14 +234,14 @@ export function App(): ReactElement {
         window.setTimeout(() => {
           setVisibleReservations((currentReservations) => ({
             ...currentReservations,
-            [activeDivisionId]: {
-              ...currentReservations[activeDivisionId],
+            [divisionId]: {
+              ...currentReservations[divisionId],
               ...newReservationMap,
             },
           }));
           setAnimatedReservationKeys((currentKeys) => ({
             ...currentKeys,
-            [activeDivisionId]: newReservationKeys,
+            [divisionId]: newReservationKeys,
           }));
         }, 1000),
       );
@@ -247,12 +249,13 @@ export function App(): ReactElement {
         window.setTimeout(() => {
           setAnimatedReservationKeys((currentKeys) => ({
             ...currentKeys,
-            [activeDivisionId]: (currentKeys[activeDivisionId] ?? []).filter(
+            [divisionId]: (currentKeys[divisionId] ?? []).filter(
               (key) => !newReservationKeys.includes(key),
             ),
           }));
         }, 2600),
       );
+      queueNextDraw(divisionId, result.updatedState, effectiveReservationMap);
     };
 
     if (result.animationPlan === undefined || result.animationPlan.skipSteps.length === 0) {
@@ -260,7 +263,6 @@ export function App(): ReactElement {
       return;
     }
 
-    setIsPlacementAnimating(true);
     schedulePlacementAnimation(
       result.animationPlan,
       setSkipAnimationCues,
@@ -268,11 +270,54 @@ export function App(): ReactElement {
     );
 
     const completionDelayMs = getPlacementAnimationDuration(result.animationPlan.skipSteps);
-    const cueLifetimeMs = getSkipCueLifetime(result.animationPlan.skipSteps);
     animationTimeoutIdsRef.current.push(window.setTimeout(applyPlacement, completionDelayMs));
+  };
+
+  const queueNextDraw = (
+    divisionId: DivisionId,
+    nextState: DivisionState,
+    currentReservationMap: ReservationMap,
+  ): void => {
+    const queuedDraws = queuedDrawsRef.current[divisionId] ?? [];
+    queuedDrawsRef.current[divisionId] = queuedDraws;
+    const nextTeamId = queuedDraws.shift();
+
+    if (nextTeamId === undefined) {
+      return;
+    }
+
     animationTimeoutIdsRef.current.push(
-      window.setTimeout(() => setIsPlacementAnimating(false), cueLifetimeMs),
+      window.setTimeout(() => {
+        processDraw(divisionId, nextState, currentReservationMap, nextTeamId);
+      }, 0),
     );
+  };
+
+  const handleDraw = (teamId: string): void => {
+    const currentState = divisionStates[activeDivisionId];
+
+    if (currentState === undefined) {
+      return;
+    }
+
+    if (isPlacementPending) {
+      const pendingDraw = pendingDrawRef.current;
+      const queuedDraws = queuedDrawsRef.current[activeDivisionId] ?? [];
+      queuedDrawsRef.current[activeDivisionId] = queuedDraws;
+
+      if (pendingDraw?.divisionId === activeDivisionId && pendingDraw.teamId === teamId) {
+        return;
+      }
+
+      if (queuedDraws.includes(teamId)) {
+        return;
+      }
+
+      queuedDraws.push(teamId);
+      return;
+    }
+
+    processDraw(activeDivisionId, currentState, activeReservationMap, teamId);
   };
 
   const handleReset = (): void => {
@@ -285,6 +330,14 @@ export function App(): ReactElement {
     if (!window.confirm(`Reset ${currentState.config.name} and clear all current placements?`)) {
       return;
     }
+
+    stopPlacementAnimation(
+      animationTimeoutIdsRef.current,
+      setSkipAnimationCues,
+      setIsPlacementPending,
+    );
+    queuedDrawsRef.current[activeDivisionId] = [];
+    pendingDrawRef.current = null;
 
     setDivisionStates((currentStates) => ({
       ...currentStates,
@@ -320,7 +373,7 @@ export function App(): ReactElement {
                   aria-pressed={isActive}
                   className={divisionTabClasses[division.id]}
                   data-active={String(isActive)}
-                  disabled={isPlacementAnimating}
+                  disabled={isPlacementPending}
                   type="button"
                   onClick={() => setActiveDivisionId(division.id)}
                 >
@@ -339,7 +392,7 @@ export function App(): ReactElement {
             <StatCard label="Progress" value={`${progress}%`} />
             <button
               className="reset-button"
-              disabled={isPlacementAnimating}
+              disabled={isPlacementPending}
               type="button"
               onClick={handleReset}
             >
@@ -411,7 +464,7 @@ export function App(): ReactElement {
             {seedBracketOrder.map((seedBracket) => (
               <SeedSection
                 key={seedBracket}
-                disabled={isPlacementAnimating}
+                disabled={false}
                 seedBracket={seedBracket}
                 teams={teamsBySeed[seedBracket]}
                 onDraw={handleDraw}
@@ -574,11 +627,11 @@ function SeedSection(props: {
 function stopPlacementAnimation(
   timeoutIds: number[],
   setSkipAnimationCues: Dispatch<SetStateAction<SkipAnimationCue[]>>,
-  setIsPlacementAnimating: (value: boolean) => void,
+  setIsPlacementPending: (value: boolean) => void,
 ): void {
   clearAnimationTimeouts(timeoutIds);
   setSkipAnimationCues([]);
-  setIsPlacementAnimating(false);
+  setIsPlacementPending(false);
 }
 
 function renderSlotCuePreview(

@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
 import { divisions } from "./data.ts";
-import { createDivisionState, getSlotReservations, placeTeamById } from "./draw-engine.ts";
+import {
+  createDivisionState,
+  getSlotReservations,
+  placeTeamById,
+  removeTeamById,
+} from "./draw-engine.ts";
 import type { DivisionConfig, SeedBracket, SlotReservation, Team } from "./types.ts";
 
 function createTeam(id: string, seed: SeedBracket, ngb: string, name = id): Team {
@@ -280,6 +285,72 @@ describe("placeTeamById", () => {
     expect(result.messages.join(" ")).toContain("No valid placement remains");
   });
 
+  test("removes a placed team and rebuilds the board from draw history", () => {
+    const teams = [
+      createTeam("seed-a", "seed1", "Belgium", "Seed A"),
+      createTeam("seed-b", "seed1", "France", "Seed B"),
+      createTeam("seed-c", "seed1", "Spain", "Seed C"),
+      createTeam("pick-a", "seed2", "Germany", "Pick A"),
+      createTeam("pick-b", "seed2", "Italy", "Pick B"),
+    ];
+    let state = createDivisionState(createDivisionConfig(teams, { groupNames: ["A", "B", "C"] }));
+
+    for (const teamId of ["seed-a", "seed-b", "seed-c", "pick-a", "pick-b"] as const) {
+      state = placeTeamById(state, teamId).updatedState;
+    }
+
+    const removalResult = removeTeamById(state, "seed-a");
+
+    expect(removalResult.ok).toBe(true);
+    expect(removalResult.updatedState.drawOrder).toEqual(["seed-b", "seed-c", "pick-a", "pick-b"]);
+    expect(removalResult.updatedState.placedTeamIds.has("seed-a")).toBe(false);
+    expect(removalResult.updatedState.groups[0]?.slots[0]?.name).toBe("Seed B");
+    expect(removalResult.updatedState.groups[1]?.slots[0]?.name).toBe("Seed C");
+    expect(removalResult.updatedState.groups[0]?.slots[1]?.name).toBe("Pick A");
+    expect(removalResult.updatedState.groups[1]?.slots[1]?.name).toBe("Pick B");
+    expect(removalResult.messages).toEqual([
+      "Seed A was removed from the board and returned to the draw rail.",
+    ]);
+  });
+
+  test("allows a removed team to be drawn again cleanly", () => {
+    const teams = [
+      createTeam("seed-a", "seed1", "Belgium", "Seed A"),
+      createTeam("seed-b", "seed1", "France", "Seed B"),
+      createTeam("pick-a", "seed2", "Germany", "Pick A"),
+    ];
+    let state = createDivisionState(createDivisionConfig(teams, { groupNames: ["A", "B"] }));
+
+    state = placeTeamById(state, "seed-a").updatedState;
+    state = placeTeamById(state, "seed-b").updatedState;
+    state = placeTeamById(state, "pick-a").updatedState;
+
+    const removalResult = removeTeamById(state, "pick-a");
+
+    expect(removalResult.ok).toBe(true);
+    expect(removalResult.updatedState.placedTeamIds.has("pick-a")).toBe(false);
+
+    const redrawResult = placeTeamById(removalResult.updatedState, "pick-a");
+
+    expect(redrawResult.ok).toBe(true);
+    expect(redrawResult.updatedState.placedTeamIds.has("pick-a")).toBe(true);
+    expect(redrawResult.updatedState.groups[0]?.slots[1]?.name).toBe("Pick A");
+  });
+
+  test("rejects removing a team that is not currently placed", () => {
+    const teams = [
+      createTeam("seed-a", "seed1", "Belgium", "Seed A"),
+      createTeam("seed-b", "seed1", "France", "Seed B"),
+    ];
+    const state = createDivisionState(createDivisionConfig(teams, { groupNames: ["A", "B"] }));
+
+    const removalResult = removeTeamById(state, "seed-a");
+
+    expect(removalResult.ok).toBe(false);
+    expect(removalResult.updatedState).toBe(state);
+    expect(removalResult.messages).toEqual(["Seed A is not currently on the board."]);
+  });
+
   test("allows Ghent Gargoyles as the first real Division 1 draw", () => {
     const division = divisions.find((entry) => entry.id === "division-1");
 
@@ -350,6 +421,89 @@ describe("placeTeamById", () => {
     }
 
     expect(state.placedTeamIds.size).toBe(division.teams.length);
+    const groupsWithGermanPair = state.groups.filter(
+      (group) => group.slots.filter((team) => team?.ngb === "Germany").length === 2,
+    );
+
+    expect(groupsWithGermanPair).toHaveLength(1);
+  });
+
+  test("can continue a real Division 1 draw after removing an earlier team", () => {
+    const division = divisions.find((entry) => entry.id === "division-1");
+
+    if (division === undefined) {
+      throw new Error("Missing Division 1 fixture.");
+    }
+
+    const drawOrder = [
+      "Ghent Gargoyles",
+      "Ruhr Phoenix",
+      "Braunschweiger Broomicorns",
+      "Titans Paris",
+      "Werewolves of London Firsts",
+      "Malaka Vikings",
+      "London QC",
+      "Paris Frog",
+      "Toulouse Minotaures",
+      "Rheinos Bonn",
+      "Sagene IF 1",
+      "Siena Ghibellines",
+      "Buckbeak Riders",
+      "Heidelberger HellHounds",
+      "Velociraptors QC",
+      "BEL Flamingos",
+      "Werewolves of London Seconds",
+      "Vienna Vanguards",
+      "METU Unicorns",
+      "OPEN SPOT",
+      "Darmstadt Athenas",
+      "SCC Berlin Bluecaps Sky",
+      "Münster Marauders",
+      "Kraków Dragons",
+    ] as const;
+
+    let state = createDivisionState(division);
+
+    for (const teamName of drawOrder.slice(0, 16)) {
+      const team = division.teams.find((entry) => entry.name === teamName);
+
+      if (team === undefined) {
+        throw new Error(`Missing fixture for ${teamName}.`);
+      }
+
+      state = placeTeamById(state, team.id).updatedState;
+    }
+
+    const removalTarget = division.teams.find((entry) => entry.name === "Paris Frog");
+
+    if (removalTarget === undefined) {
+      throw new Error("Missing fixture for Paris Frog.");
+    }
+
+    const removalResult = removeTeamById(state, removalTarget.id);
+
+    expect(removalResult.ok).toBe(true);
+    state = removalResult.updatedState;
+
+    for (const teamName of drawOrder) {
+      const team = division.teams.find((entry) => entry.name === teamName);
+
+      if (team === undefined) {
+        throw new Error(`Missing fixture for ${teamName}.`);
+      }
+
+      if (state.placedTeamIds.has(team.id) || team.id === removalTarget.id) {
+        continue;
+      }
+
+      const result = placeTeamById(state, team.id);
+
+      expect(result.ok).toBe(true);
+      state = result.updatedState;
+    }
+
+    expect(state.placedTeamIds.size).toBe(division.teams.length - 1);
+    expect(state.placedTeamIds.has(removalTarget.id)).toBe(false);
     const groupsWithGermanPair = state.groups.filter(
       (group) => group.slots.filter((team) => team?.ngb === "Germany").length === 2,
     );

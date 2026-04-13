@@ -171,6 +171,7 @@ export function getSlotRowClasses(
   slotTone: SeedBracket,
   isEmpty: boolean,
   isPlacedHighlight: boolean,
+  isRemoving: boolean,
   isCueExisting: boolean,
   isCueTarget: boolean,
 ): string {
@@ -179,6 +180,7 @@ export function getSlotRowClasses(
     `slot-row--${slotTone}`,
     isEmpty ? "slot-row--empty" : "",
     isPlacedHighlight ? "slot-row--placed" : "",
+    isRemoving ? "slot-row--removing" : "",
     isCueExisting ? "slot-row--cue-existing" : "",
     isCueTarget ? "slot-row--cue-target" : "",
   ]

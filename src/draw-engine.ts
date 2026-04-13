@@ -6,6 +6,7 @@ import type {
   PlacementAnimationStep,
   PlacementCoordinate,
   PlacementResult,
+  RemovalResult,
   SeedBracket,
   SlotReservation,
   Team,
@@ -38,6 +39,7 @@ export function createDivisionState(config: DivisionConfig): DivisionState {
       slots: [null, null, null, null],
     })),
     placedTeamIds: new Set<string>(),
+    drawOrder: [],
     messages: [buildReadyMessage(config)],
   };
 }
@@ -145,10 +147,56 @@ export function placeTeamById(state: DivisionState, teamId: string): PlacementRe
       ...state,
       groups: updatedGroups,
       placedTeamIds: new Set([...state.placedTeamIds, team.id]),
+      drawOrder: [...state.drawOrder, team.id],
       messages: limitMessages([...messages.toReversed(), ...state.messages]),
     },
     messages,
     animationPlan,
+  };
+}
+
+export function removeTeamById(state: DivisionState, teamId: string): RemovalResult {
+  const team = state.config.teams.find((entry) => entry.id === teamId);
+
+  if (team === undefined) {
+    return {
+      ok: false,
+      updatedState: state,
+      messages: ["The selected team does not exist in this division."],
+    };
+  }
+
+  if (!state.placedTeamIds.has(team.id)) {
+    return {
+      ok: false,
+      updatedState: state,
+      messages: [`${team.name} is not currently on the board.`],
+    };
+  }
+
+  const nextDrawOrder = state.drawOrder.filter((placedTeamId) => placedTeamId !== team.id);
+  const rebuiltState = replayDrawOrder(state.config, nextDrawOrder);
+
+  if (!rebuiltState.ok || rebuiltState.updatedState === undefined) {
+    return {
+      ok: false,
+      updatedState: state,
+      messages: [
+        `Removing ${team.name} would leave the board in an inconsistent state. Reset ${state.config.shortName} if this persists.`,
+      ],
+    };
+  }
+
+  const removalMessage = `${team.name} was removed from the board and returned to the draw rail.`;
+
+  return {
+    ok: true,
+    updatedState: {
+      ...rebuiltState.updatedState,
+      messages: limitMessages([removalMessage, ...rebuiltState.updatedState.messages]),
+    },
+    messages: [removalMessage],
+    removedTeam: team,
   };
 }
 
@@ -201,6 +249,25 @@ function buildSlotCandidateNgbMap(
   }
 
   return slotCandidateNgbs;
+}
+
+function replayDrawOrder(
+  config: DivisionConfig,
+  drawOrder: string[],
+): { ok: boolean; updatedState?: DivisionState } {
+  let nextState = createDivisionState(config);
+
+  for (const teamId of drawOrder) {
+    const placementResult = placeTeamById(nextState, teamId);
+
+    if (!placementResult.ok) {
+      return { ok: false };
+    }
+
+    nextState = placementResult.updatedState;
+  }
+
+  return { ok: true, updatedState: nextState };
 }
 
 function buildReadyMessage(config: DivisionConfig): string {

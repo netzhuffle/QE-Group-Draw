@@ -26,6 +26,7 @@ import {
   getSlotReservations,
   getUndrawnTeams,
   placeTeamById,
+  removeTeamById,
   resetDivisionState,
 } from "./draw-engine.ts";
 import type {
@@ -136,6 +137,8 @@ export function App(): ReactElement {
       >,
   );
   const [isPlacementPending, setIsPlacementPending] = useState(false);
+  const [isRemovalPending, setIsRemovalPending] = useState(false);
+  const [removingPlacementKey, setRemovingPlacementKey] = useState<string | null>(null);
   const animationTimeoutIdsRef = useRef<number[]>([]);
   const pendingDrawRef = useRef<{ divisionId: DivisionId; teamId: string } | null>(null);
   const queuedDrawsRef = useRef(
@@ -294,6 +297,10 @@ export function App(): ReactElement {
   };
 
   const handleDraw = (teamId: string): void => {
+    if (isRemovalPending) {
+      return;
+    }
+
     const currentState = divisionStates[activeDivisionId];
 
     if (currentState === undefined) {
@@ -320,6 +327,61 @@ export function App(): ReactElement {
     processDraw(activeDivisionId, currentState, activeReservationMap, teamId);
   };
 
+  const handleRemove = (teamId: string, placementKey: string): void => {
+    if (isPlacementPending || isRemovalPending) {
+      return;
+    }
+
+    const currentState = divisionStates[activeDivisionId];
+
+    if (currentState === undefined) {
+      return;
+    }
+
+    stopPlacementAnimation(
+      animationTimeoutIdsRef.current,
+      setSkipAnimationCues,
+      setIsPlacementPending,
+    );
+    queuedDrawsRef.current[activeDivisionId] = [];
+    pendingDrawRef.current = null;
+    setConstraintFeed(null);
+    setHighlightedPlacementKey(null);
+    setAnimatedReservationKeys((currentKeys) => ({
+      ...currentKeys,
+      [activeDivisionId]: [],
+    }));
+    setRemovingPlacementKey(placementKey);
+    setIsRemovalPending(true);
+
+    animationTimeoutIdsRef.current.push(
+      window.setTimeout(() => {
+        const removalResult = removeTeamById(currentState, teamId);
+
+        if (!removalResult.ok) {
+          setRemovingPlacementKey(null);
+          setIsRemovalPending(false);
+          return;
+        }
+
+        setDivisionStates((currentStates) => ({
+          ...currentStates,
+          [activeDivisionId]: removalResult.updatedState,
+        }));
+        setVisibleReservations((currentReservations) => ({
+          ...currentReservations,
+          [activeDivisionId]: buildReservationMap(removalResult.updatedState),
+        }));
+        setAnimatedReservationKeys((currentKeys) => ({
+          ...currentKeys,
+          [activeDivisionId]: [],
+        }));
+        setRemovingPlacementKey(null);
+        setIsRemovalPending(false);
+      }, 450),
+    );
+  };
+
   const handleReset = (): void => {
     const currentState = divisionStates[activeDivisionId];
 
@@ -338,6 +400,8 @@ export function App(): ReactElement {
     );
     queuedDrawsRef.current[activeDivisionId] = [];
     pendingDrawRef.current = null;
+    setIsRemovalPending(false);
+    setRemovingPlacementKey(null);
 
     setDivisionStates((currentStates) => ({
       ...currentStates,
@@ -373,7 +437,7 @@ export function App(): ReactElement {
                   aria-pressed={isActive}
                   className={divisionTabClasses[division.id]}
                   data-active={String(isActive)}
-                  disabled={isPlacementPending}
+                  disabled={isPlacementPending || isRemovalPending}
                   type="button"
                   onClick={() => setActiveDivisionId(division.id)}
                 >
@@ -392,7 +456,7 @@ export function App(): ReactElement {
             <StatCard label="Progress" value={`${progress}%`} />
             <button
               className="reset-button"
-              disabled={isPlacementPending}
+              disabled={isPlacementPending || isRemovalPending}
               type="button"
               onClick={handleReset}
             >
@@ -437,9 +501,12 @@ export function App(): ReactElement {
                 groupIndex={groupIndex}
                 group={group}
                 highlightedPlacementKey={highlightedPlacementKey}
+                removingPlacementKey={removingPlacementKey}
                 animatedReservationKeys={activeAnimatedReservationKeys}
                 reservationMap={activeReservationMap}
                 skipAnimationCues={skipAnimationCues}
+                canRemove={!isPlacementPending && !isRemovalPending}
+                onRemove={handleRemove}
                 key={group.name}
               />
             ))}
@@ -464,7 +531,7 @@ export function App(): ReactElement {
             {seedBracketOrder.map((seedBracket) => (
               <SeedSection
                 key={seedBracket}
-                disabled={false}
+                disabled={isRemovalPending}
                 seedBracket={seedBracket}
                 teams={teamsBySeed[seedBracket]}
                 onDraw={handleDraw}
@@ -490,9 +557,12 @@ function GroupCard(props: {
   groupIndex: number;
   group: GroupState;
   highlightedPlacementKey: string | null;
+  removingPlacementKey: string | null;
   animatedReservationKeys: string[];
   reservationMap: ReservationMap;
   skipAnimationCues: SkipAnimationCue[];
+  canRemove: boolean;
+  onRemove: (teamId: string, placementKey: string) => void;
 }): ReactElement {
   const placedCount = getPlacedCount(props.group);
 
@@ -509,6 +579,7 @@ function GroupCard(props: {
           const label = slotLabels[slotIndex] ?? "Open";
           const slotKey = `${props.group.name}-${slotIndex}`;
           const isPlacedHighlight = props.highlightedPlacementKey === slotKey;
+          const isRemoving = props.removingPlacementKey === slotKey;
           const reservationNgbs = props.reservationMap[slotKey] ?? [];
           const targetCue = findTargetCue(props.skipAnimationCues, props.groupIndex, slotIndex);
           const isCueExisting = matchesExistingCue(
@@ -522,6 +593,7 @@ function GroupCard(props: {
             slotTone,
             slot === null,
             isPlacedHighlight,
+            isRemoving,
             isCueExisting,
             isCueTarget,
           );
@@ -556,7 +628,13 @@ function GroupCard(props: {
                   {renderSlotCuePreview(targetCue, reservationNgbs)}
                 </div>
               ) : (
-                <div className="slot-team" title={`${slot.name} (${slot.ngb})`}>
+                <button
+                  className="slot-team"
+                  disabled={!props.canRemove}
+                  title={`Remove ${slot.name} (${slot.ngb})`}
+                  type="button"
+                  onClick={() => props.onRemove(slot.id, slotKey)}
+                >
                   <span
                     aria-label={slot.ngb}
                     className={`slot-flag${getFlagModifierClass(slot.ngb)}${isCueExisting ? " slot-flag--focus" : ""}`}
@@ -566,7 +644,7 @@ function GroupCard(props: {
                   <strong className="truncate text-[0.8rem] leading-tight font-bold text-slate-900">
                     {slot.name}
                   </strong>
-                </div>
+                </button>
               )}
             </li>
           );

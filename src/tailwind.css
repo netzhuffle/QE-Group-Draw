@@ -289,13 +289,22 @@
     animation: slot-highlight-fade 20s linear both;
   }
 
+  .slot-row--removing {
+    z-index: 15;
+    animation: slot-remove-out 450ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
   .slot-row--cue-existing,
   .slot-row--cue-target {
     z-index: 14;
   }
 
   .slot-team {
-    @apply col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2;
+    @apply col-span-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-left;
+  }
+
+  .slot-team:disabled {
+    cursor: default;
   }
 
   .slot-flag {
@@ -518,6 +527,26 @@
 
   100% {
     filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes slot-remove-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1.05);
+    filter: brightness(0.92) saturate(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.88);
+    filter: brightness(0.82) saturate(0.92);
   }
 }
 

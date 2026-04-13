@@ -30,6 +30,7 @@ export interface DivisionState {
   config: DivisionConfig;
   groups: GroupState[];
   placedTeamIds: Set<string>;
+  drawOrder: string[];
   messages: string[];
 }
 
@@ -71,4 +72,11 @@ export interface PlacementResult {
   updatedState: DivisionState;
   messages: string[];
   animationPlan?: PlacementAnimationPlan;
+}
+
+export interface RemovalResult {
+  ok: boolean;
+  updatedState: DivisionState;
+  messages: string[];
+  removedTeam?: Team;
 }

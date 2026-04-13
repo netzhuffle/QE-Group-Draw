@@ -110,7 +110,7 @@ describe("app helpers", () => {
   });
 
   test("builds slot row class list", () => {
-    expect(getSlotRowClasses("seed2", true, false, true, false)).toBe(
+    expect(getSlotRowClasses("seed2", true, false, false, true, false)).toBe(
       "slot-row slot-row--seed2 slot-row--empty slot-row--cue-existing",
     );
   });
@@ -129,6 +129,7 @@ describe("app helpers", () => {
         { name: "B", slots: [null, null, null, null] },
       ],
       placedTeamIds: new Set(),
+      drawOrder: [],
       messages: [],
     };
     const nextState: DivisionState = {
@@ -164,6 +165,7 @@ describe("app helpers", () => {
         { name: "B", slots: [null, null, null, null] },
       ],
       placedTeamIds: new Set(),
+      drawOrder: [],
       messages: [],
     };
 

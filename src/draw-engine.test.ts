@@ -327,7 +327,7 @@ describe("placeTeamById", () => {
       "Werewolves of London Seconds",
       "Vienna Vanguards",
       "METU Unicorns",
-      "Hacettepe Pegasus",
+      "OPEN SPOT",
       "Darmstadt Athenas",
       "SCC Berlin Bluecaps Sky",
       "Münster Marauders",

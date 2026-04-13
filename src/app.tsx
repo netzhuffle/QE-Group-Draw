@@ -116,9 +116,7 @@ export function App(): ReactElement {
         divisions.map((division) => [division.id, createDivisionState(division)]),
       ) as DivisionStateRecord,
   );
-  const [activeDivisionId, setActiveDivisionId] = useState<DivisionId>(
-    divisions[0]?.id ?? "division-1",
-  );
+  const [activeDivisionId, setActiveDivisionId] = useState(divisions[0]?.id ?? "division-1");
   const [highlightedPlacementKey, setHighlightedPlacementKey] = useState<string | null>(null);
   const [skipAnimationCues, setSkipAnimationCues] = useState<SkipAnimationCue[]>([]);
   const [constraintFeed, setConstraintFeed] = useState<ConstraintFeedState | null>(null);
@@ -160,7 +158,7 @@ export function App(): ReactElement {
 
   useEffect(() => {
     if (constraintFeed === null) {
-      return;
+      return undefined;
     }
 
     const timeoutId = window.setTimeout(() => {

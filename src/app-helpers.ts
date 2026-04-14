@@ -229,3 +229,7 @@ export function findPlacementKey(
 export function getPlacedCount(group: GroupState): number {
   return group.slots.filter((slot) => slot !== null).length;
 }
+
+export function isNewestPlacedTeam(state: DivisionState, teamId: string): boolean {
+  return state.drawOrder.at(-1) === teamId;
+}

@@ -17,6 +17,7 @@ import {
   getPlacedCount,
   getSlotRowClasses,
   groupTeamsBySeed,
+  isNewestPlacedTeam,
   matchesExistingCue,
   type ConstraintFeedState,
 } from "./app-helpers.ts";
@@ -43,6 +44,12 @@ const slotLabels = ["Seed 1", "Seed 2", "Unseeded", "Unseeded"] as const;
 type DivisionId = (typeof divisions)[number]["id"];
 
 type DivisionStateRecord = Record<DivisionId, DivisionState>;
+interface PendingRemovalConfirmation {
+  divisionId: DivisionId;
+  teamId: string;
+  teamName: string;
+  placementKey: string;
+}
 type ThemeVariable =
   | "--primary"
   | "--primary-strong"
@@ -139,6 +146,8 @@ export function App(): ReactElement {
   const [isPlacementPending, setIsPlacementPending] = useState(false);
   const [isRemovalPending, setIsRemovalPending] = useState(false);
   const [removingPlacementKey, setRemovingPlacementKey] = useState<string | null>(null);
+  const [pendingRemovalConfirmation, setPendingRemovalConfirmation] =
+    useState<PendingRemovalConfirmation | null>(null);
   const animationTimeoutIdsRef = useRef<number[]>([]);
   const pendingDrawRef = useRef<{ divisionId: DivisionId; teamId: string } | null>(null);
   const queuedDrawsRef = useRef(
@@ -163,6 +172,7 @@ export function App(): ReactElement {
   const teamsBySeed = groupTeamsBySeed(undrawnTeams);
   const activeAnimatedReservationKeys = animatedReservationKeys[activeDivisionId] ?? [];
   const activeReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
+  const isModalOpen = pendingRemovalConfirmation !== null;
 
   useEffect(() => {
     if (constraintFeed === null) {
@@ -297,7 +307,7 @@ export function App(): ReactElement {
   };
 
   const handleDraw = (teamId: string): void => {
-    if (isRemovalPending) {
+    if (isRemovalPending || isModalOpen) {
       return;
     }
 
@@ -327,29 +337,26 @@ export function App(): ReactElement {
     processDraw(activeDivisionId, currentState, activeReservationMap, teamId);
   };
 
-  const handleRemove = (teamId: string, placementKey: string): void => {
-    if (isPlacementPending || isRemovalPending) {
-      return;
-    }
-
-    const currentState = divisionStates[activeDivisionId];
-
-    if (currentState === undefined) {
-      return;
-    }
+  const executeRemoval = (
+    divisionId: DivisionId,
+    currentState: DivisionState,
+    teamId: string,
+    placementKey: string,
+  ): void => {
+    setPendingRemovalConfirmation(null);
 
     stopPlacementAnimation(
       animationTimeoutIdsRef.current,
       setSkipAnimationCues,
       setIsPlacementPending,
     );
-    queuedDrawsRef.current[activeDivisionId] = [];
+    queuedDrawsRef.current[divisionId] = [];
     pendingDrawRef.current = null;
     setConstraintFeed(null);
     setHighlightedPlacementKey(null);
     setAnimatedReservationKeys((currentKeys) => ({
       ...currentKeys,
-      [activeDivisionId]: [],
+      [divisionId]: [],
     }));
     setRemovingPlacementKey(placementKey);
     setIsRemovalPending(true);
@@ -366,20 +373,44 @@ export function App(): ReactElement {
 
         setDivisionStates((currentStates) => ({
           ...currentStates,
-          [activeDivisionId]: removalResult.updatedState,
+          [divisionId]: removalResult.updatedState,
         }));
         setVisibleReservations((currentReservations) => ({
           ...currentReservations,
-          [activeDivisionId]: buildReservationMap(removalResult.updatedState),
+          [divisionId]: buildReservationMap(removalResult.updatedState),
         }));
         setAnimatedReservationKeys((currentKeys) => ({
           ...currentKeys,
-          [activeDivisionId]: [],
+          [divisionId]: [],
         }));
         setRemovingPlacementKey(null);
         setIsRemovalPending(false);
       }, 450),
     );
+  };
+
+  const handleRemove = (teamId: string, placementKey: string, teamName: string): void => {
+    if (isRemovalPending || isModalOpen) {
+      return;
+    }
+
+    const currentState = divisionStates[activeDivisionId];
+
+    if (currentState === undefined) {
+      return;
+    }
+
+    if (!isNewestPlacedTeam(currentState, teamId)) {
+      setPendingRemovalConfirmation({
+        divisionId: activeDivisionId,
+        teamId,
+        teamName,
+        placementKey,
+      });
+      return;
+    }
+
+    executeRemoval(activeDivisionId, currentState, teamId, placementKey);
   };
 
   const handleReset = (): void => {
@@ -402,6 +433,7 @@ export function App(): ReactElement {
     pendingDrawRef.current = null;
     setIsRemovalPending(false);
     setRemovingPlacementKey(null);
+    setPendingRemovalConfirmation(null);
 
     setDivisionStates((currentStates) => ({
       ...currentStates,
@@ -437,7 +469,7 @@ export function App(): ReactElement {
                   aria-pressed={isActive}
                   className={divisionTabClasses[division.id]}
                   data-active={String(isActive)}
-                  disabled={isPlacementPending || isRemovalPending}
+                  disabled={isPlacementPending || isRemovalPending || isModalOpen}
                   type="button"
                   onClick={() => setActiveDivisionId(division.id)}
                 >
@@ -456,7 +488,7 @@ export function App(): ReactElement {
             <StatCard label="Progress" value={`${progress}%`} />
             <button
               className="reset-button"
-              disabled={isPlacementPending || isRemovalPending}
+              disabled={isPlacementPending || isRemovalPending || isModalOpen}
               type="button"
               onClick={handleReset}
             >
@@ -505,7 +537,7 @@ export function App(): ReactElement {
                 animatedReservationKeys={activeAnimatedReservationKeys}
                 reservationMap={activeReservationMap}
                 skipAnimationCues={skipAnimationCues}
-                canRemove={!isPlacementPending && !isRemovalPending}
+                canRemove={!isRemovalPending && !isModalOpen}
                 onRemove={handleRemove}
                 key={group.name}
               />
@@ -531,7 +563,7 @@ export function App(): ReactElement {
             {seedBracketOrder.map((seedBracket) => (
               <SeedSection
                 key={seedBracket}
-                disabled={isRemovalPending}
+                disabled={isRemovalPending || isModalOpen}
                 seedBracket={seedBracket}
                 teams={teamsBySeed[seedBracket]}
                 onDraw={handleDraw}
@@ -540,6 +572,29 @@ export function App(): ReactElement {
           </div>
         </aside>
       </main>
+
+      {pendingRemovalConfirmation !== null ? (
+        <RemovalModal
+          teamName={pendingRemovalConfirmation.teamName}
+          onCancel={() => setPendingRemovalConfirmation(null)}
+          onConfirm={() => {
+            const confirmation = pendingRemovalConfirmation;
+            const currentState = divisionStates[confirmation.divisionId];
+
+            if (currentState === undefined) {
+              setPendingRemovalConfirmation(null);
+              return;
+            }
+
+            executeRemoval(
+              confirmation.divisionId,
+              currentState,
+              confirmation.teamId,
+              confirmation.placementKey,
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -562,7 +617,7 @@ function GroupCard(props: {
   reservationMap: ReservationMap;
   skipAnimationCues: SkipAnimationCue[];
   canRemove: boolean;
-  onRemove: (teamId: string, placementKey: string) => void;
+  onRemove: (teamId: string, placementKey: string, teamName: string) => void;
 }): ReactElement {
   const placedCount = getPlacedCount(props.group);
 
@@ -633,7 +688,7 @@ function GroupCard(props: {
                   disabled={!props.canRemove}
                   title={`Remove ${slot.name} (${slot.ngb})`}
                   type="button"
-                  onClick={() => props.onRemove(slot.id, slotKey)}
+                  onClick={() => props.onRemove(slot.id, slotKey, slot.name)}
                 >
                   <span
                     aria-label={slot.ngb}
@@ -651,6 +706,42 @@ function GroupCard(props: {
         })}
       </ol>
     </section>
+  );
+}
+
+function RemovalModal(props: {
+  teamName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}): ReactElement {
+  return (
+    <div aria-modal="true" className="modal-backdrop" role="dialog">
+      <div className="modal-card">
+        <div className="eyebrow">Confirm Removal</div>
+        <h2 className="modal-title">Remove {props.teamName}?</h2>
+        <p className="modal-copy">
+          This will remove the team from the board, return it to the draw rail, and replay the
+          current division state. This cannot be undone.
+        </p>
+        <div className="modal-actions">
+          <button
+            autoFocus
+            className="modal-button modal-button--secondary"
+            onClick={props.onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className="modal-button modal-button--danger"
+            onClick={props.onConfirm}
+            type="button"
+          >
+            Remove Team
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

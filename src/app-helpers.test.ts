@@ -8,6 +8,7 @@ import {
   getDivisionRuleSummary,
   getSlotRowClasses,
   groupTeamsBySeed,
+  isNewestPlacedTeam,
   matchesExistingCue,
   matchesTargetCue,
 } from "./app-helpers.ts";
@@ -172,5 +173,28 @@ describe("app helpers", () => {
     expect(getDivisionRuleSummary(state)).toBe(
       "Exactly 1 Germany pair required. Other NGBs may not double up. 1 open spot could add another pair.",
     );
+  });
+
+  test("detects whether a placed team is the newest draw", () => {
+    const state: DivisionState = {
+      config: {
+        id: "division",
+        name: "Division",
+        shortName: "Division",
+        groupNames: ["A", "B"],
+        teams: [],
+      },
+      groups: [
+        { name: "A", slots: [null, null, null, null] },
+        { name: "B", slots: [null, null, null, null] },
+      ],
+      placedTeamIds: new Set(["alpha", "bravo"]),
+      drawOrder: ["alpha", "bravo"],
+      messages: [],
+    };
+
+    expect(isNewestPlacedTeam(state, "bravo")).toBe(true);
+    expect(isNewestPlacedTeam(state, "alpha")).toBe(false);
+    expect(isNewestPlacedTeam(state, "charlie")).toBe(false);
   });
 });

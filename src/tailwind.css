@@ -144,6 +144,47 @@
     @apply relative z-0 grid min-h-0 gap-2 lg:grid-cols-[minmax(0,1.72fr)_20rem];
   }
 
+  .modal-backdrop {
+    @apply absolute inset-0 z-40 flex items-center justify-center bg-slate-950/24 px-4 backdrop-blur-sm;
+  }
+
+  .modal-card {
+    @apply w-full max-w-[28rem] rounded-[1.4rem] border bg-white/97 p-5 shadow-[0_24px_50px_rgba(15,23,42,0.28)];
+    border-color: var(--panel-border);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklch, white 92%, var(--primary-soft)),
+        color-mix(in oklch, white 96%, var(--support-soft))
+      ),
+      white;
+  }
+
+  .modal-title {
+    @apply mt-1 text-[1.45rem] leading-none font-black tracking-[-0.05em] text-slate-950;
+  }
+
+  .modal-copy {
+    @apply mt-2 text-[0.86rem] leading-5 font-medium text-slate-700;
+  }
+
+  .modal-actions {
+    @apply mt-4 flex items-center justify-end gap-2;
+  }
+
+  .modal-button {
+    @apply rounded-[0.95rem] px-3.5 py-2 text-[0.84rem] font-black transition duration-150 ease-out;
+  }
+
+  .modal-button--secondary {
+    @apply border border-white/80 bg-white/95 text-slate-800 shadow-[0_8px_16px_rgba(15,23,42,0.08)];
+  }
+
+  .modal-button--danger {
+    @apply text-white shadow-[0_10px_22px_rgba(127,29,29,0.22)];
+    background: linear-gradient(135deg, oklch(0.58 0.22 24), oklch(0.5 0.19 14));
+  }
+
   .panel-surface {
     @apply min-h-0 rounded-[1.65rem] border border-white/90 bg-white/95 p-2.5 shadow-[0_16px_34px_rgba(15,23,42,0.12)] backdrop-blur-md;
     border-color: var(--panel-border);

@@ -5,16 +5,7 @@
     "typeAware": true,
     "typeCheck": true
   },
-  "plugins": [
-    "eslint",
-    "typescript",
-    "react",
-    "react-perf",
-    "unicorn",
-    "oxc",
-    "import",
-    "promise"
-  ],
+  "plugins": ["eslint", "typescript", "react", "react-perf", "unicorn", "oxc", "import", "promise"],
   "settings": {
     "react": {
       "version": "19.2.4"
@@ -48,9 +39,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.test.ts"
-      ],
+      "files": ["**/*.test.ts"],
       "rules": {
         "no-await-in-loop": "off"
       }

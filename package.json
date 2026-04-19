@@ -9,10 +9,14 @@
     "dev": "bun run css:dev & bun ./src/index.html",
     "build": "bun run css:build && bun build ./src/index.html --outdir ./dist --target browser --minify",
     "test": "bun test",
-    "format": "bunx --bun oxfmt src/*.ts src/*.tsx src/tailwind.css postcss.config.mjs",
-    "format:check": "bunx --bun oxfmt src/*.ts src/*.tsx src/tailwind.css postcss.config.mjs --check",
-    "lint": "bunx --bun oxlint src/*.ts src/*.tsx",
+    "format": "bunx --bun oxfmt .",
+    "format:check": "bunx --bun oxfmt . --check",
+    "lint": "bunx --bun oxlint .",
     "check": "bun run format:check && bun run lint && bun run test"
+  },
+  "dependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
@@ -27,9 +31,5 @@
     "postcss": "^8.5.9",
     "postcss-cli": "^11.0.1",
     "tailwindcss": "^4.2.2"
-  },
-  "dependencies": {
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
   }
 }

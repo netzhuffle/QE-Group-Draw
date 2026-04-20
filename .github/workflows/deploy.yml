@@ -126,7 +126,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: bundle
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
+      url: https://groupdraw.quadball.eu
 
     steps:
       - name: Download release artifact

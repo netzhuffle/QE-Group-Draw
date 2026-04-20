@@ -144,7 +144,7 @@ describe("app helpers", () => {
     expect(findPlacementKey(previousState, nextState, "alpha")).toBe("A-0");
   });
 
-  test("builds division rule summary for pair rule divisions without an open spot", () => {
+  test("builds division rule summary for pair rule divisions with an open spot", () => {
     const state: DivisionState = {
       config: {
         id: "division-1",
@@ -158,7 +158,7 @@ describe("app helpers", () => {
         },
         teams: [
           createTeam("alpha", "seed1", "Belgium"),
-          createTeam("italy", "unseeded", "Italy", "Lunatica Brindisi"),
+          createTeam("open", "unseeded", "UNKNOWN", "OPEN SPOT"),
         ],
       },
       groups: [
@@ -171,7 +171,7 @@ describe("app helpers", () => {
     };
 
     expect(getDivisionRuleSummary(state)).toBe(
-      "Exactly 1 Germany pair required. Other NGBs may not double up.",
+      "Exactly 1 Germany pair required. Other NGBs may not double up. 1 open spot could add another pair.",
     );
   });
 

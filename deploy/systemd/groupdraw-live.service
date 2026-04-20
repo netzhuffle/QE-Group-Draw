@@ -1,0 +1,20 @@
+[Unit]
+Description=QE Group Draw live Bun server
+After=network.target
+
+[Service]
+Type=simple
+User=deploy-groupdraw
+Group=deploy-groupdraw
+WorkingDirectory=/srv/qe-group-draw-live/current
+Environment=NODE_ENV=production
+Environment=PORT=3010
+Environment=STATE_FILE=/srv/qe-group-draw-live/shared/live-state.json
+EnvironmentFile=-/srv/qe-group-draw-live/shared/live.env
+ExecStart=/home/deploy-groupdraw/.bun/bin/bun ./server-dist/index.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

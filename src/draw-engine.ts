@@ -48,6 +48,27 @@ export function resetDivisionState(config: DivisionConfig): DivisionState {
   return createDivisionState(config);
 }
 
+export function restoreDivisionState(
+  config: DivisionConfig,
+  drawOrder: string[],
+  messages?: string[],
+): DivisionState {
+  const replayResult = replayDrawOrder(config, drawOrder);
+
+  if (!replayResult.ok || replayResult.updatedState === undefined) {
+    throw new Error(`Unable to restore division state for ${config.id}.`);
+  }
+
+  if (messages === undefined) {
+    return replayResult.updatedState;
+  }
+
+  return {
+    ...replayResult.updatedState,
+    messages: [...messages],
+  };
+}
+
 export function getUndrawnTeams(state: DivisionState): Team[] {
   return state.config.teams.filter((team) => !state.placedTeamIds.has(team.id));
 }

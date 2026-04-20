@@ -9,10 +9,13 @@
     "dev": "bun run css:dev & bun ./src/index.html",
     "build": "bun run css:build && bun build ./src/index.html --outdir ./dist --target browser --minify",
     "test": "bun test",
+    "test:parallel": "bun test --parallel",
+    "test:changed": "bun test --changed",
     "format": "bunx --bun oxfmt .",
     "format:check": "bunx --bun oxfmt . --check",
     "lint": "bunx --bun oxlint .",
-    "check": "bun run format:check && bun run lint && bun run test"
+    "check": "bun run format:check && bun run lint && bun run test",
+    "check:ci": "bun run format:check && bun run lint && bun run test:parallel"
   },
   "dependencies": {
     "react": "^19.2.5",

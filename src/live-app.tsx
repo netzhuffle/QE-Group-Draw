@@ -476,11 +476,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
     mutation: Extract<LiveMutation, { kind: "placed" }>,
     divisionId: DivisionId,
   ): void {
-    const currentReservationMap = visibleReservationsRef.current[divisionId] ?? emptyReservationMap;
     const nextReservationMap = nextReservations[divisionId] ?? emptyReservationMap;
-    const keptReservationMap = keepVisibleReservations(currentReservationMap, nextReservationMap);
-    const newReservationMap = getNewReservations(currentReservationMap, nextReservationMap);
-    const newReservationKeys = Object.keys(newReservationMap);
     const completionDelayMs = getPlacementAnimationDuration(
       mutation.animationPlan?.skipSteps ?? [],
     );
@@ -498,6 +494,15 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
 
     animationTimeoutIdsRef.current.push(
       window.setTimeout(() => {
+        const currentReservationMap =
+          visibleReservationsRef.current[divisionId] ?? emptyReservationMap;
+        const keptReservationMap = keepVisibleReservations(
+          currentReservationMap,
+          nextReservationMap,
+        );
+        const newReservationMap = getNewReservations(currentReservationMap, nextReservationMap);
+        const newReservationKeys = Object.keys(newReservationMap);
+
         setDivisionStates(nextStates);
         setVisibleReservations((currentReservations) => ({
           ...currentReservations,

@@ -381,6 +381,7 @@ export function App(): ReactElement {
       ...currentKeys,
       [activeDivisionId]: [],
     }));
+    setConstraintFeed(buildConstraintFeed([`${currentState.config.name} was reset.`]));
   };
 
   return (

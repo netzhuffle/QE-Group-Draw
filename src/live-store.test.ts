@@ -103,6 +103,7 @@ describe("live store", () => {
 
   test("resets one division without touching the other", () => {
     let snapshot = createInitialLiveSnapshot();
+    const initialDivisionOneMessage = snapshot.divisions["division-1"]?.messages[0];
 
     const draw = applyLiveCommand(snapshot, {
       kind: "draw",
@@ -120,8 +121,10 @@ describe("live store", () => {
     expect(reset.ok).toBe(true);
     expect(reset.snapshot.lastMutation?.kind).toBe("reset");
     expect(reset.snapshot.divisions["division-1"]?.drawOrder).toEqual([]);
+    expect(reset.snapshot.divisions["division-1"]?.messages[0]).toBe(initialDivisionOneMessage);
     expect(reset.snapshot.divisions["division-2"]?.drawOrder).toEqual([
       "division-2-1-sevilla-warriors",
     ]);
+    expect(reset.messages).toEqual(["EQC2026 Division 1 was reset."]);
   });
 });

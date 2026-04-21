@@ -307,7 +307,6 @@ export function applyLiveCommand(
 
   const updatedState = resetDivisionState(config);
   const resetMessage = `${config.name} was reset.`;
-  updatedState.messages = [resetMessage, ...updatedState.messages];
   const mutation = buildResetMutation(normalizedSnapshot, divisionId, [resetMessage]);
 
   return {

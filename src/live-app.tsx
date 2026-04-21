@@ -440,6 +440,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
     clearTransientAnimationState();
     setDivisionStates(nextStates);
     setVisibleReservations(nextReservations);
+    setConstraintFeed(buildConstraintFeed(mutation.messages));
     appliedVersionRef.current = snapshot.version;
     isApplyingSnapshotRef.current = false;
     processNextSnapshot();

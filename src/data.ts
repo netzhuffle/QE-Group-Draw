@@ -56,7 +56,13 @@ const divisionOneTeams = [
   createTeam("division-1", "unseeded", "Poland", "D1 / 26", "Kraków Dragons"),
   createTeam("division-1", "unseeded", "UK", "D1 / 27", "Velociraptors QC"),
   createTeam("division-1", "unseeded", "UK", "D2 / 4", "Werewolves of London Seconds"),
-  createTeam("division-1", "unseeded", "Germany", "D2 / 11", "Smoking Cauldron Stuttgart"),
+  createTeam(
+    "division-1",
+    "unseeded",
+    "Germany",
+    "D2 / 11",
+    "Smoking Thestrals Stuttgart-Tübingen",
+  ),
 ] as const;
 
 const divisionTwoTeams = [

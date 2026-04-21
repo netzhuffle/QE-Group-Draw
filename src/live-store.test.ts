@@ -37,9 +37,8 @@ describe("live store", () => {
   });
 
   test("stores strategic reservations created by a draw", () => {
-    let snapshot = createInitialLiveSnapshot();
-
-    for (const teamId of [
+    const snapshot = createInitialLiveSnapshot();
+    const priorDrawOrder = [
       "division-1-1-ghent-gargoyles",
       "division-1-1-ruhr-phoenix",
       "division-1-1-braunschweiger-broomicorns",
@@ -55,21 +54,28 @@ describe("live store", () => {
       "division-1-unseeded-bel-flamingos",
       "division-1-unseeded-heidelberger-hellhounds",
       "division-1-unseeded-vienna-vanguards",
-      "division-1-unseeded-metu-unicorns",
-    ]) {
-      const result = applyLiveCommand(snapshot, {
-        kind: "draw",
-        divisionId: "division-1",
-        teamId,
-      });
+    ] as const;
+    const divisionOneState = snapshot.divisions["division-1"];
 
-      expect(result.ok).toBe(true);
-      snapshot = result.snapshot;
+    if (divisionOneState === undefined) {
+      throw new Error("Missing Division 1 snapshot state.");
     }
 
-    expect(snapshot.lastMutation?.kind).toBe("placed");
+    snapshot.divisions["division-1"] = {
+      ...divisionOneState,
+      drawOrder: [...priorDrawOrder],
+    };
+
+    const result = applyLiveCommand(snapshot, {
+      kind: "draw",
+      divisionId: "division-1",
+      teamId: "division-1-unseeded-metu-unicorns",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.snapshot.lastMutation?.kind).toBe("placed");
     expect(
-      Object.values(snapshot.divisions["division-1"]?.visibleReservations ?? {}),
+      Object.values(result.snapshot.divisions["division-1"]?.visibleReservations ?? {}),
     ).toContainEqual(["Germany"]);
   });
 

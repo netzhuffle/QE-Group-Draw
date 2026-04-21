@@ -62,7 +62,9 @@ export function buildNoteTextSegments(message: string): NoteTextSegment[] {
     }
   }
 
-  for (const match of message.matchAll(/^(.+?) may form exactly one duplicate pair/g)) {
+  for (const match of message.matchAll(
+    /^(.+?) may fill one of the required duplicate pair slots/g,
+  )) {
     if (match.index !== undefined && match[1] !== undefined) {
       addRange(match.index, match.index + match[1].length);
     }
@@ -199,9 +201,11 @@ export function getDivisionRuleSummary(state: DivisionState): string {
     (team) => team.name === "OPEN SPOT" || team.ngb === "UNKNOWN",
   );
 
+  const pairLabel = rule.requiredGroupsWithPair === 1 ? "pair" : "pairs";
+
   return hasOpenSpot
-    ? `Exactly 1 ${rule.ngb} pair required. Other NGBs may not double up. 1 open spot could add another pair.`
-    : `Exactly 1 ${rule.ngb} pair required. Other NGBs may not double up.`;
+    ? `Exactly ${rule.requiredGroupsWithPair} ${rule.ngb} ${pairLabel} required. Other NGBs may not double up. 1 open spot could add another pair.`
+    : `Exactly ${rule.requiredGroupsWithPair} ${rule.ngb} ${pairLabel} required. Other NGBs may not double up.`;
 }
 
 export function findPlacementKey(

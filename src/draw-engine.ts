@@ -296,7 +296,8 @@ function buildReadyMessage(config: DivisionConfig): string {
     return `${config.name} is ready for the draw.`;
   }
 
-  return `${config.name} is ready for the draw. Exactly ${config.duplicateAllowance.requiredGroupsWithPair} group must finish with exactly ${config.duplicateAllowance.maxTeamsPerGroup} ${config.duplicateAllowance.ngb} teams.`;
+  const groupLabel = config.duplicateAllowance.requiredGroupsWithPair === 1 ? "group" : "groups";
+  return `${config.name} is ready for the draw. Exactly ${config.duplicateAllowance.requiredGroupsWithPair} ${groupLabel} must finish with exactly ${config.duplicateAllowance.maxTeamsPerGroup} ${config.duplicateAllowance.ngb} teams.`;
 }
 
 function limitMessages(messages: string[]): string[] {
@@ -598,7 +599,7 @@ function buildPlacementMessages(
 
   if (relevantDuplicateAllowancePlacements.length > 0 && config.duplicateAllowance !== undefined) {
     messages.push(
-      `${config.duplicateAllowance.ngb} may form exactly one duplicate pair in ${config.shortName}, so ${formatGroupNames(
+      `${config.duplicateAllowance.ngb} may fill one of the required duplicate pair slots in ${config.shortName}, so ${formatGroupNames(
         relevantDuplicateAllowancePlacements.map((placement) => placement.groupIndex),
         config,
       )} remain eligible for ${team.name}.`,

@@ -56,7 +56,7 @@ const divisionOneTeams = [
   createTeam("division-1", "unseeded", "Poland", "D1 / 26", "Kraków Dragons"),
   createTeam("division-1", "unseeded", "UK", "D1 / 27", "Velociraptors QC"),
   createTeam("division-1", "unseeded", "UK", "D2 / 4", "Werewolves of London Seconds"),
-  createTeam("division-1", "unseeded", "UNKNOWN", "n/a", "OPEN SPOT"),
+  createTeam("division-1", "unseeded", "Germany", "D2 / 11", "Stuttgart"),
 ] as const;
 
 const divisionTwoTeams = [
@@ -94,7 +94,7 @@ export const divisions: readonly DivisionConfig[] = [
     groupNames: defaultGroupNames,
     duplicateAllowance: {
       ngb: "Germany",
-      requiredGroupsWithPair: 1,
+      requiredGroupsWithPair: 2,
       maxTeamsPerGroup: 2,
     },
     teams: divisionOneTeams,

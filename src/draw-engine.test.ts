@@ -82,7 +82,7 @@ describe("placeTeamById", () => {
     ]);
   });
 
-  test("allows one German duplicate group when the pair rule is active", () => {
+  test("allows a German duplicate group when the pair rule is active", () => {
     const teams = [
       createTeam("seed-a", "seed1", "Germany", "Seed A"),
       createTeam("seed-b", "seed1", "France", "Seed B"),
@@ -108,7 +108,7 @@ describe("placeTeamById", () => {
 
     expect(result.ok).toBe(true);
     expect(result.updatedState.groups[0]?.slots[1]?.name).toBe("Pick");
-    expect(result.messages.join(" ")).toContain("duplicate pair");
+    expect(result.messages.join(" ")).toContain("required duplicate pair slots");
   });
 
   test("uses forward-looking placement to preserve the only future slot", () => {
@@ -398,7 +398,7 @@ describe("placeTeamById", () => {
       "Werewolves of London Seconds",
       "Vienna Vanguards",
       "METU Unicorns",
-      "OPEN SPOT",
+      "Stuttgart",
       "Darmstadt Athenas",
       "SCC Berlin Bluecaps Sky",
       "Münster Marauders",
@@ -425,7 +425,7 @@ describe("placeTeamById", () => {
       (group) => group.slots.filter((team) => team?.ngb === "Germany").length === 2,
     );
 
-    expect(groupsWithGermanPair).toHaveLength(1);
+    expect(groupsWithGermanPair).toHaveLength(2);
   });
 
   test("can continue a real Division 1 draw after removing an earlier team", () => {
@@ -455,7 +455,7 @@ describe("placeTeamById", () => {
       "Werewolves of London Seconds",
       "Vienna Vanguards",
       "METU Unicorns",
-      "OPEN SPOT",
+      "Stuttgart",
       "Darmstadt Athenas",
       "SCC Berlin Bluecaps Sky",
       "Münster Marauders",
@@ -508,6 +508,6 @@ describe("placeTeamById", () => {
       (group) => group.slots.filter((team) => team?.ngb === "Germany").length === 2,
     );
 
-    expect(groupsWithGermanPair).toHaveLength(1);
+    expect(groupsWithGermanPair).toHaveLength(2);
   });
 });

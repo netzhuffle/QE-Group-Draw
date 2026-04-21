@@ -146,7 +146,7 @@
   }
 
   .stage-grid {
-    @apply relative z-0 grid min-h-0 gap-2 lg:grid-cols-[minmax(0,1.72fr)_20rem];
+    @apply relative z-0 grid min-h-0 gap-2 lg:grid-cols-[minmax(0,1.68fr)_22rem];
   }
 
   .modal-backdrop {

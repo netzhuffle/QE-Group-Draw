@@ -158,7 +158,7 @@ describe("app helpers", () => {
         },
         teams: [
           createTeam("alpha", "seed1", "Belgium"),
-          createTeam("stuttgart", "unseeded", "Germany", "Stuttgart"),
+          createTeam("stuttgart", "unseeded", "Germany", "Smoking Cauldron Stuttgart"),
         ],
       },
       groups: [

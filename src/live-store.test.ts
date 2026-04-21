@@ -69,7 +69,7 @@ describe("live store", () => {
     const result = applyLiveCommand(snapshot, {
       kind: "draw",
       divisionId: "division-1",
-      teamId: "division-1-unseeded-metu-unicorns",
+      teamId: "division-1-unseeded-hacettepe-pegasus",
     });
 
     expect(result.ok).toBe(true);

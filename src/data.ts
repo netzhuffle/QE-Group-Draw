@@ -48,7 +48,7 @@ const divisionOneTeams = [
   createTeam("division-1", "unseeded", "Belgium", "D1 / 13", "BEL Flamingos"),
   createTeam("division-1", "unseeded", "Germany", "D1 / 14", "Heidelberger HellHounds"),
   createTeam("division-1", "unseeded", "Austria", "D1 / 15", "Vienna Vanguards"),
-  createTeam("division-1", "unseeded", "Türkiye", "D1 / 16", "METU Unicorns"),
+  createTeam("division-1", "unseeded", "Türkiye", "D1 / 16", "Hacettepe Pegasus"),
   createTeam("division-1", "unseeded", "Germany", "D1 / 17", "Darmstadt Athenas"),
   createTeam("division-1", "unseeded", "Germany", "D1 / 18", "SCC Berlin Bluecaps Sky"),
   createTeam("division-1", "unseeded", "Spain", "D1 / 19", "Buckbeak Riders"),

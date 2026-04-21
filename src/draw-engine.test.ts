@@ -190,10 +190,10 @@ describe("placeTeamById", () => {
       state = result.updatedState;
     }
 
-    const metu = division.teams.find((entry) => entry.name === "METU Unicorns");
+    const metu = division.teams.find((entry) => entry.name === "Hacettepe Pegasus");
 
     if (metu === undefined) {
-      throw new Error("Missing fixture for METU Unicorns.");
+      throw new Error("Missing fixture for Hacettepe Pegasus.");
     }
 
     const result = placeTeamById(state, metu.id);
@@ -397,7 +397,7 @@ describe("placeTeamById", () => {
       "BEL Flamingos",
       "Werewolves of London Seconds",
       "Vienna Vanguards",
-      "METU Unicorns",
+      "Hacettepe Pegasus",
       "Smoking Thestrals Stuttgart-Tübingen",
       "Darmstadt Athenas",
       "SCC Berlin Bluecaps Sky",
@@ -454,7 +454,7 @@ describe("placeTeamById", () => {
       "BEL Flamingos",
       "Werewolves of London Seconds",
       "Vienna Vanguards",
-      "METU Unicorns",
+      "Hacettepe Pegasus",
       "Smoking Thestrals Stuttgart-Tübingen",
       "Darmstadt Athenas",
       "SCC Berlin Bluecaps Sky",

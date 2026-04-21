@@ -355,6 +355,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
               <SeedSection
                 key={seedBracket}
                 disabled={editsDisabled}
+                interactive={isAdmin}
                 seedBracket={seedBracket}
                 teams={teamsBySeed[seedBracket]}
                 onDraw={handleDraw}

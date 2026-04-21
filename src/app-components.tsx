@@ -162,10 +162,13 @@ export function RemovalModal(props: {
 
 export function SeedSection(props: {
   disabled: boolean;
+  interactive?: boolean;
   seedBracket: SeedBracket;
   teams: Team[];
   onDraw: (teamId: string) => void;
 }): ReactElement {
+  const isInteractive = props.interactive ?? true;
+
   return (
     <section className={`seed-section seed-section--${props.seedBracket}`}>
       <div className="seed-header">
@@ -186,21 +189,33 @@ export function SeedSection(props: {
           </div>
         ) : (
           props.teams.map((team) => (
-            <button
-              className={`team-button team-button--${props.seedBracket}`}
-              disabled={props.disabled}
+            <div
+              className={`team-button team-button--${props.seedBracket}${
+                isInteractive ? " team-button--interactive" : " team-button--static"
+              }`}
               key={team.id}
               title={team.name}
-              type="button"
-              onClick={() => props.onDraw(team.id)}
             >
               <span aria-label={team.ngb} className={`flag-badge${getFlagModifierClass(team.ngb)}`}>
                 {getFlag(team.ngb)}
               </span>
-              <span className="min-w-0 truncate text-[0.82rem] font-bold text-slate-900">
-                {team.name}
-              </span>
-            </button>
+              {isInteractive ? (
+                <button
+                  className="team-button__action"
+                  disabled={props.disabled}
+                  type="button"
+                  onClick={() => props.onDraw(team.id)}
+                >
+                  <span className="min-w-0 truncate text-[0.82rem] font-bold text-slate-900">
+                    {team.name}
+                  </span>
+                </button>
+              ) : (
+                <span className="min-w-0 truncate text-[0.82rem] font-bold text-slate-900">
+                  {team.name}
+                </span>
+              )}
+            </div>
           ))
         )}
       </div>

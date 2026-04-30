@@ -60,6 +60,7 @@ jobs:
           rsync -a \
             deploy/ \
             release/live/deploy/
+          cp .bun-version release/live/.bun-version
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v6

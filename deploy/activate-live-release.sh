@@ -6,6 +6,7 @@ release_id=""
 service_name="qe-group-draw-live"
 port="3010"
 keep_releases=5
+bun_bin="/home/groupdraw-live/.bun/bin/bun"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       keep_releases="${2:-}"
       shift 2
       ;;
+    --bun-bin)
+      bun_bin="${2:-}"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       exit 1
@@ -41,19 +46,31 @@ if [[ -z "$release_id" ]]; then
   exit 1
 fi
 
-export PATH="$HOME/.bun/bin:$PATH"
-
-if ! command -v bun >/dev/null 2>&1; then
-  echo "bun not found in PATH." >&2
-  exit 1
-fi
-
 release_dir="${base_dir}/releases/${release_id}"
 current_link="${base_dir}/current"
 previous_release=""
+expected_bun_version_file="${release_dir}/.bun-version"
 
 if [[ ! -d "$release_dir" ]]; then
   echo "Release directory does not exist: ${release_dir}" >&2
+  exit 1
+fi
+
+if [[ ! -r "$expected_bun_version_file" ]]; then
+  echo "Pinned Bun version file is missing: ${expected_bun_version_file}" >&2
+  exit 1
+fi
+
+if [[ ! -x "$bun_bin" ]]; then
+  echo "Runtime Bun binary is missing or not executable: ${bun_bin}" >&2
+  exit 1
+fi
+
+expected_bun_version="$(tr -d '[:space:]' < "$expected_bun_version_file")"
+actual_bun_version="$("$bun_bin" --version)"
+
+if [[ "$actual_bun_version" != "$expected_bun_version" ]]; then
+  echo "Runtime Bun version mismatch: expected ${expected_bun_version}, got ${actual_bun_version}." >&2
   exit 1
 fi
 

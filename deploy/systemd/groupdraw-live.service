@@ -4,15 +4,15 @@ After=network.target
 
 [Service]
 Type=simple
-User=deploy-groupdraw
-Group=deploy-groupdraw
+User=groupdraw-live
+Group=groupdraw-live
 WorkingDirectory=/srv/qe-group-draw-live/current
 Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=3010
 Environment=STATE_FILE=/srv/qe-group-draw-live/shared/live-state.json
 EnvironmentFile=-/srv/qe-group-draw-live/shared/live.env
-ExecStart=/home/deploy-groupdraw/.bun/bin/bun ./server-dist/index.js
+ExecStart=/home/groupdraw-live/.bun/bin/bun ./server-dist/index.js
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

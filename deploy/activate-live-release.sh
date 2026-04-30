@@ -71,17 +71,26 @@ restart_service() {
 }
 
 check_health() {
-  local health_url="http://127.0.0.1:${port}/healthz"
+  local public_health_url="http://127.0.0.1:${port}/healthz"
+  local internal_health_url="http://127.0.0.1:${port}/internal/healthz"
   local attempt
+  local public_health_body
   local health_body
 
   for attempt in $(seq 1 20); do
-    if health_body="$(curl --fail --silent --show-error --max-time 2 "$health_url")"; then
+    if public_health_body="$(curl --fail --silent --show-error --max-time 2 "$public_health_url")" &&
+      health_body="$(curl --fail --silent --show-error --max-time 2 "$internal_health_url")"; then
+      if [[ "$public_health_body" == *"\"bunVersion\":"* ]]; then
+        echo "Public health check must not expose Bun version." >&2
+        echo "Health response: ${public_health_body}" >&2
+        return 1
+      fi
+
       if [[ "$health_body" == *"\"bunVersion\":\"${expected_bun_version}\""* ]]; then
         return 0
       fi
 
-      echo "Runtime Bun version mismatch in health check: expected ${expected_bun_version}." >&2
+      echo "Runtime Bun version mismatch in internal health check: expected ${expected_bun_version}." >&2
       echo "Health response: ${health_body}" >&2
       return 1
     fi

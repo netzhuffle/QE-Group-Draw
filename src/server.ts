@@ -49,6 +49,13 @@ const server = Bun.serve({
     if (url.pathname === "/healthz") {
       return Response.json({
         ok: true,
+        version: currentSnapshot.version,
+      });
+    }
+
+    if (url.pathname === "/internal/healthz") {
+      return Response.json({
+        ok: true,
         bunVersion: Bun.version,
         version: currentSnapshot.version,
       });

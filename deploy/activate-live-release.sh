@@ -6,7 +6,6 @@ release_id=""
 service_name="qe-group-draw-live"
 port="3010"
 keep_releases=5
-bun_bin="/home/groupdraw-live/.bun/bin/bun"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -28,10 +27,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --keep-releases)
       keep_releases="${2:-}"
-      shift 2
-      ;;
-    --bun-bin)
-      bun_bin="${2:-}"
       shift 2
       ;;
     *)
@@ -61,18 +56,7 @@ if [[ ! -r "$expected_bun_version_file" ]]; then
   exit 1
 fi
 
-if [[ ! -x "$bun_bin" ]]; then
-  echo "Runtime Bun binary is missing or not executable: ${bun_bin}" >&2
-  exit 1
-fi
-
 expected_bun_version="$(tr -d '[:space:]' < "$expected_bun_version_file")"
-actual_bun_version="$("$bun_bin" --version)"
-
-if [[ "$actual_bun_version" != "$expected_bun_version" ]]; then
-  echo "Runtime Bun version mismatch: expected ${expected_bun_version}, got ${actual_bun_version}." >&2
-  exit 1
-fi
 
 mkdir -p "${base_dir}/shared"
 
@@ -89,10 +73,17 @@ restart_service() {
 check_health() {
   local health_url="http://127.0.0.1:${port}/healthz"
   local attempt
+  local health_body
 
   for attempt in $(seq 1 20); do
-    if curl --fail --silent --show-error --max-time 2 "$health_url" >/dev/null; then
-      return 0
+    if health_body="$(curl --fail --silent --show-error --max-time 2 "$health_url")"; then
+      if [[ "$health_body" == *"\"bunVersion\":\"${expected_bun_version}\""* ]]; then
+        return 0
+      fi
+
+      echo "Runtime Bun version mismatch in health check: expected ${expected_bun_version}." >&2
+      echo "Health response: ${health_body}" >&2
+      return 1
     fi
     sleep 1
   done

@@ -8,6 +8,7 @@ User=deploy-groupdraw
 Group=deploy-groupdraw
 WorkingDirectory=/srv/qe-group-draw-live/current
 Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
 Environment=PORT=3010
 Environment=STATE_FILE=/srv/qe-group-draw-live/shared/live-state.json
 EnvironmentFile=-/srv/qe-group-draw-live/shared/live.env

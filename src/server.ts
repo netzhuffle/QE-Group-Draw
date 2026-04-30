@@ -14,6 +14,7 @@ import {
   type LiveSnapshotEnvelope,
 } from "./live-types.ts";
 
+const hostname = process.env.HOST ?? "127.0.0.1";
 const port = Number(process.env.PORT ?? "3010");
 const distDir = resolve(process.cwd(), "dist");
 const stateFilePath = resolve(
@@ -26,6 +27,7 @@ let currentSnapshot = await loadSnapshot(stateFilePath);
 let mutationQueue = Promise.resolve();
 
 const server = Bun.serve({
+  hostname,
   port,
   fetch(request, serverInstance) {
     const url = new URL(request.url);
@@ -63,7 +65,7 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Live groupdraw server listening on http://127.0.0.1:${server.port}`);
+console.log(`Live groupdraw server listening on http://${hostname}:${server.port}`);
 
 async function handleAdminCommand(request: Request): Promise<Response> {
   if (!isAuthorizedAdmin(request)) {

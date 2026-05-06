@@ -48,15 +48,10 @@ jobs:
           set -euo pipefail
           mkdir -p release/static
           mkdir -p release/live
-          mkdir -p release/archive
           rsync -a \
             dist/ \
             release/static/
-          rsync -a \
-            dist/ \
-            release/archive/
-          cp src/archive-state.json release/archive/archive-state.json
-          bun run prepare:archive release/archive/index.html release/archive/archive-state.json
+          cp src/archive-state.json release/static/archive-state.json
           rsync -a \
             dist/ \
             release/live/dist/
@@ -124,71 +119,6 @@ jobs:
             -e "ssh $ssh_opts" \
             release/static/ \
             "${DEPLOY_USER}@${deploy_host}:${deploy_path}/"
-
-      - name: Remove SSH config
-        if: always()
-        run: rm -rf ~/.ssh
-
-  deploy_live_archive:
-    if: github.ref == 'refs/heads/main'
-    needs: bundle
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://groupdraw.quadball.eu
-
-    steps:
-      - name: Download release artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: release-${{ github.sha }}
-          path: release
-
-      - name: Configure SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          KNOWN_HOSTS: ${{ secrets.KNOWN_HOSTS }}
-        run: |
-          set -euo pipefail
-          : "${SSH_PRIVATE_KEY:?Missing SSH_PRIVATE_KEY secret}"
-          : "${KNOWN_HOSTS:?Missing KNOWN_HOSTS secret}"
-
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
-      - name: Sync archived live site to server
-        env:
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          LIVE_DEPLOY_BASE: ${{ vars.LIVE_DEPLOY_BASE }}
-          LIVE_DEPLOY_USER: ${{ vars.LIVE_DEPLOY_USER }}
-          LIVE_ARCHIVE_BASE: ${{ vars.LIVE_ARCHIVE_BASE }}
-          LIVE_ARCHIVE_CURRENT: ${{ vars.LIVE_ARCHIVE_CURRENT }}
-        run: |
-          set -euo pipefail
-
-          deploy_host="jannis.rocks"
-          live_base="${LIVE_DEPLOY_BASE:-/srv/qe-group-draw-live}"
-          live_user="${LIVE_DEPLOY_USER:-${DEPLOY_USER:?Missing DEPLOY_USER variable}}"
-          archive_base="${LIVE_ARCHIVE_BASE:-${live_base}/archive-releases}"
-          archive_current="${LIVE_ARCHIVE_CURRENT:-${live_base}/archive-current}"
-          archive_release_dir="${archive_base}/${GITHUB_SHA}"
-          ssh_opts="-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes"
-
-          ssh $ssh_opts "${live_user}@${deploy_host}" "mkdir -p '${archive_release_dir}'"
-
-          rsync -az --delete \
-            -e "ssh $ssh_opts" \
-            release/archive/ \
-            "${live_user}@${deploy_host}:${archive_release_dir}/"
-
-          ssh $ssh_opts "${live_user}@${deploy_host}" "\
-            ln -sfn '${archive_release_dir}' '${archive_current}' && \
-            if [ -d '${archive_base}' ]; then \
-              ls -1dt '${archive_base}'/* 2>/dev/null | tail -n +6 | xargs -r rm -rf; \
-            fi"
 
       - name: Remove SSH config
         if: always()

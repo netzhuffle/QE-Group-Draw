@@ -1,12 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildArchiveRuntimeScript } from "./archive-config.ts";
 import { parseLiveSnapshot } from "./live-types.ts";
+import { getDefaultRuntimeMode } from "./runtime-config.ts";
 
 describe("archive config", () => {
-  test("builds a static runtime config that loads the archived snapshot", () => {
-    expect(buildArchiveRuntimeScript()).toContain('"mode":"archive"');
-    expect(buildArchiveRuntimeScript()).toContain('"stateEndpoint":"/archive-state.json"');
+  test("uses archive mode for the archive hostname", () => {
+    expect(getDefaultRuntimeMode("groupdraw.quadball.eu")).toBe("archive");
+  });
+
+  test("keeps local mode for the static jannis.rocks path", () => {
+    expect(getDefaultRuntimeMode("jannis.rocks")).toBe("local");
   });
 
   test("ships a valid archived final snapshot", async () => {

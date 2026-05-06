@@ -149,6 +149,10 @@
     @apply relative z-0 grid min-h-0 gap-2 lg:grid-cols-[minmax(0,1.68fr)_22rem];
   }
 
+  .stage-grid--archive {
+    @apply lg:grid-cols-1;
+  }
+
   .modal-backdrop {
     @apply absolute inset-0 z-40 flex items-center justify-center bg-slate-950/24 px-4 backdrop-blur-sm;
   }

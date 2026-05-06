@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { archivedLiveSnapshot } from "./archive-state.ts";
 import { parseLiveSnapshot } from "./live-types.ts";
 import { getDefaultRuntimeMode } from "./runtime-config.ts";
 
@@ -17,5 +18,11 @@ describe("archive config", () => {
 
     expect(snapshot.divisions["division-1"]?.drawOrder).toHaveLength(24);
     expect(snapshot.divisions["division-2"]?.drawOrder).toHaveLength(24);
+  });
+
+  test("embeds the archived snapshot for immediate archive rendering", () => {
+    expect(archivedLiveSnapshot.version).toBe(275);
+    expect(archivedLiveSnapshot.divisions["division-1"]?.drawOrder).toHaveLength(24);
+    expect(archivedLiveSnapshot.divisions["division-2"]?.drawOrder).toHaveLength(24);
   });
 });

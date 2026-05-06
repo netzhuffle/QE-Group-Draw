@@ -23,6 +23,7 @@ import {
   keepVisibleReservations,
   type ReservationMap,
 } from "./app-reservations.ts";
+import { archivedLiveSnapshot } from "./archive-state.ts";
 import { divisions } from "./data.ts";
 import { getUndrawnTeams } from "./draw-engine.ts";
 import { fetchLiveSnapshot, openLiveSocket, sendLiveCommand } from "./live-client.ts";
@@ -54,12 +55,14 @@ interface SnapshotQueueEntry {
 }
 
 export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
+  const isArchive = props.runtimeConfig.mode === "archive";
+  const initialSnapshot = isArchive ? archivedLiveSnapshot : createInitialLiveSnapshot();
   const [divisionStates, setDivisionStates] = useState<DivisionStateRecord>(() =>
-    restoreDivisionStates(createInitialLiveSnapshot()),
+    restoreDivisionStates(initialSnapshot),
   );
   const [visibleReservations, setVisibleReservations] = useState<
     Record<DivisionId, ReservationMap>
-  >(() => restoreVisibleReservations(createInitialLiveSnapshot()));
+  >(() => restoreVisibleReservations(initialSnapshot));
   const [activeDivisionId, setActiveDivisionId] = useState(divisions[0]?.id ?? "division-1");
   const [constraintFeed, setConstraintFeed] = useState<ConstraintFeedState | null>(null);
   const [highlightedPlacementKey, setHighlightedPlacementKey] = useState<string | null>(null);
@@ -78,7 +81,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
   const [removingPlacementKey, setRemovingPlacementKey] = useState<string | null>(null);
   const [pendingRemovalConfirmation, setPendingRemovalConfirmation] =
     useState<PendingRemovalConfirmation | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(isArchive);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [connectionLabel, setConnectionLabel] = useState("Connecting");
   const [isCommandPending, setIsCommandPending] = useState(false);
@@ -88,14 +91,13 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectAttemptRef = useRef(0);
   const shouldReconnectRef = useRef(true);
-  const appliedVersionRef = useRef(0);
+  const appliedVersionRef = useRef(initialSnapshot.version);
   const snapshotQueueRef = useRef<SnapshotQueueEntry[]>([]);
   const isApplyingSnapshotRef = useRef(false);
   const divisionStatesRef = useRef(divisionStates);
   const visibleReservationsRef = useRef(visibleReservations);
   const activeDivisionIdRef = useRef(activeDivisionId);
 
-  const isArchive = props.runtimeConfig.mode === "archive";
   const isAdmin = props.runtimeConfig.adminPassword !== null && !isArchive;
   const isModalOpen = pendingRemovalConfirmation !== null;
 
@@ -171,6 +173,10 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
   }, [constraintFeed]);
 
   useEffect(() => {
+    if (isArchive) {
+      return undefined;
+    }
+
     let isCancelled = false;
 
     const initialize = async (): Promise<void> => {
@@ -184,11 +190,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
         applySnapshotImmediately(snapshot);
         setIsInitialized(true);
         setLoadError(null);
-        if (isArchive) {
-          setConnectionLabel("Archived");
-        } else {
-          connectSocket();
-        }
+        connectSocket();
       } catch (error) {
         if (isCancelled) {
           return;
@@ -283,7 +285,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
               value={`${placedTeamCount}/${activeState.config.teams.length}`}
             />
             <StatCard label="Progress" value={`${progress}%`} />
-            <StatCard label={isArchive ? "Status" : "Sync"} value={connectionLabel} />
+            {isArchive ? null : <StatCard label="Sync" value={connectionLabel} />}
             {isAdmin ? (
               <button
                 className="reset-button"
@@ -313,7 +315,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
         </div>
       </header>
 
-      <main className="stage-grid">
+      <main className={`stage-grid${isArchive ? " stage-grid--archive" : ""}`}>
         <section className="panel-surface panel-groups">
           <div className="panel-header">
             <div>
@@ -345,33 +347,35 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
           </div>
         </section>
 
-        <aside className="panel-surface panel-rail">
-          <div className="panel-header items-start gap-3">
-            <div>
-              <div className="eyebrow">{activeState.config.shortName}</div>
-              <h2 className="panel-title">Draw Rail</h2>
+        {isArchive ? null : (
+          <aside className="panel-surface panel-rail">
+            <div className="panel-header items-start gap-3">
+              <div>
+                <div className="eyebrow">{activeState.config.shortName}</div>
+                <h2 className="panel-title">Draw Rail</h2>
+              </div>
+              <div className="panel-meta">{undrawnTeams.length} teams left</div>
             </div>
-            <div className="panel-meta">{undrawnTeams.length} teams left</div>
-          </div>
 
-          <div className="rail-note">
-            <span className="note-pill">Rule</span>
-            <p>{getDivisionRuleSummary(activeState)}</p>
-          </div>
+            <div className="rail-note">
+              <span className="note-pill">Rule</span>
+              <p>{getDivisionRuleSummary(activeState)}</p>
+            </div>
 
-          <div className="rail-scroll">
-            {seedBracketOrder.map((seedBracket) => (
-              <SeedSection
-                key={seedBracket}
-                disabled={editsDisabled}
-                interactive={isAdmin}
-                seedBracket={seedBracket}
-                teams={teamsBySeed[seedBracket]}
-                onDraw={handleDraw}
-              />
-            ))}
-          </div>
-        </aside>
+            <div className="rail-scroll">
+              {seedBracketOrder.map((seedBracket) => (
+                <SeedSection
+                  key={seedBracket}
+                  disabled={editsDisabled}
+                  interactive={isAdmin}
+                  seedBracket={seedBracket}
+                  teams={teamsBySeed[seedBracket]}
+                  onDraw={handleDraw}
+                />
+              ))}
+            </div>
+          </aside>
+        )}
       </main>
 
       {pendingRemovalConfirmation !== null ? (

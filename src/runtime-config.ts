@@ -36,10 +36,11 @@ export function resolveRuntimeConfig(): RuntimeConfig {
     overrides.mode === "live" || overrides.mode === "archive"
       ? overrides.mode
       : getDefaultRuntimeMode(window.location.hostname);
+  const defaultStateEndpoint = runtimeMode === "archive" ? "/archive-state.json" : "/api/state";
 
   return {
     mode: runtimeMode,
-    stateEndpoint: overrides.stateEndpoint ?? "/archive-state.json",
+    stateEndpoint: overrides.stateEndpoint ?? defaultStateEndpoint,
     commandEndpoint: overrides.commandEndpoint ?? "/api/admin/command",
     websocketEndpoint: overrides.websocketEndpoint ?? "/api/ws",
     adminPassword: getAdminPassword(),

@@ -57,7 +57,7 @@ function renderArchiveDocument(
 ): string {
   const appMarkup = renderToStaticMarkup(<ArchiveBoard activeDivisionId={activeDivisionId} />);
 
-  return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="color-scheme" content="light"/><title>EQC 2026 Group Draw</title><link rel="icon" type="image/png" href="./${faviconFileName}"/><style>${escapeStyleContent(
+  return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="color-scheme" content="light"/><meta name="description" content="Archived final group draw board for the European Quadball Cup 2026 divisions."/><title>EQC 2026 Group Draw</title><link rel="icon" type="image/png" href="./${faviconFileName}"/><style>${escapeStyleContent(
     stylesheet,
   )}</style></head><body><div id="app">${appMarkup}</div></body></html>`;
 }

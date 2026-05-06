@@ -164,22 +164,31 @@ jobs:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           LIVE_DEPLOY_BASE: ${{ vars.LIVE_DEPLOY_BASE }}
           LIVE_DEPLOY_USER: ${{ vars.LIVE_DEPLOY_USER }}
-          LIVE_ARCHIVE_PATH: ${{ vars.LIVE_ARCHIVE_PATH }}
+          LIVE_ARCHIVE_BASE: ${{ vars.LIVE_ARCHIVE_BASE }}
+          LIVE_ARCHIVE_CURRENT: ${{ vars.LIVE_ARCHIVE_CURRENT }}
         run: |
           set -euo pipefail
 
           deploy_host="jannis.rocks"
           live_base="${LIVE_DEPLOY_BASE:-/srv/qe-group-draw-live}"
           live_user="${LIVE_DEPLOY_USER:-${DEPLOY_USER:?Missing DEPLOY_USER variable}}"
-          archive_path="${LIVE_ARCHIVE_PATH:-${live_base}/archive-static}"
+          archive_base="${LIVE_ARCHIVE_BASE:-${live_base}/archive-releases}"
+          archive_current="${LIVE_ARCHIVE_CURRENT:-${live_base}/archive-current}"
+          archive_release_dir="${archive_base}/${GITHUB_SHA}"
           ssh_opts="-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes"
 
-          ssh $ssh_opts "${live_user}@${deploy_host}" "mkdir -p '${archive_path}'"
+          ssh $ssh_opts "${live_user}@${deploy_host}" "mkdir -p '${archive_release_dir}'"
 
           rsync -az --delete \
             -e "ssh $ssh_opts" \
             release/archive/ \
-            "${live_user}@${deploy_host}:${archive_path}/"
+            "${live_user}@${deploy_host}:${archive_release_dir}/"
+
+          ssh $ssh_opts "${live_user}@${deploy_host}" "\
+            ln -sfn '${archive_release_dir}' '${archive_current}' && \
+            if [ -d '${archive_base}' ]; then \
+              ls -1dt '${archive_base}'/* 2>/dev/null | tail -n +6 | xargs -r rm -rf; \
+            fi"
 
       - name: Remove SSH config
         if: always()

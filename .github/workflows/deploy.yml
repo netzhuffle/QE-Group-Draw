@@ -48,9 +48,15 @@ jobs:
           set -euo pipefail
           mkdir -p release/static
           mkdir -p release/live
+          mkdir -p release/archive
           rsync -a \
             dist/ \
             release/static/
+          rsync -a \
+            dist/ \
+            release/archive/
+          cp src/archive-state.json release/archive/archive-state.json
+          bun run prepare:archive release/archive/index.html release/archive/archive-state.json
           rsync -a \
             dist/ \
             release/live/dist/
@@ -123,7 +129,7 @@ jobs:
         if: always()
         run: rm -rf ~/.ssh
 
-  deploy_live:
+  deploy_live_archive:
     if: github.ref == 'refs/heads/main'
     needs: bundle
     runs-on: ubuntu-latest
@@ -153,54 +159,27 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Sync live release to server
+      - name: Sync archived live site to server
         env:
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           LIVE_DEPLOY_BASE: ${{ vars.LIVE_DEPLOY_BASE }}
           LIVE_DEPLOY_USER: ${{ vars.LIVE_DEPLOY_USER }}
+          LIVE_ARCHIVE_PATH: ${{ vars.LIVE_ARCHIVE_PATH }}
         run: |
           set -euo pipefail
 
           deploy_host="jannis.rocks"
           live_base="${LIVE_DEPLOY_BASE:-/srv/qe-group-draw-live}"
           live_user="${LIVE_DEPLOY_USER:-${DEPLOY_USER:?Missing DEPLOY_USER variable}}"
-          release_id="${GITHUB_SHA}"
-          remote_release_dir="${live_base}/releases/${release_id}"
+          archive_path="${LIVE_ARCHIVE_PATH:-${live_base}/archive-static}"
           ssh_opts="-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes"
 
-          ssh $ssh_opts "${live_user}@${deploy_host}" "mkdir -p '${remote_release_dir}'"
+          ssh $ssh_opts "${live_user}@${deploy_host}" "mkdir -p '${archive_path}'"
 
           rsync -az --delete \
             -e "ssh $ssh_opts" \
-            release/live/ \
-            "${live_user}@${deploy_host}:${remote_release_dir}/"
-
-      - name: Activate live release
-        env:
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          LIVE_DEPLOY_BASE: ${{ vars.LIVE_DEPLOY_BASE }}
-          LIVE_DEPLOY_USER: ${{ vars.LIVE_DEPLOY_USER }}
-          LIVE_SERVICE_NAME: ${{ vars.LIVE_SERVICE_NAME }}
-          LIVE_SERVICE_PORT: ${{ vars.LIVE_SERVICE_PORT }}
-        run: |
-          set -euo pipefail
-
-          deploy_host="jannis.rocks"
-          live_base="${LIVE_DEPLOY_BASE:-/srv/qe-group-draw-live}"
-          live_user="${LIVE_DEPLOY_USER:-${DEPLOY_USER:?Missing DEPLOY_USER variable}}"
-          service_name="${LIVE_SERVICE_NAME:-qe-group-draw-live}"
-          service_port="${LIVE_SERVICE_PORT:-3010}"
-          release_id="${GITHUB_SHA}"
-          remote_release_dir="${live_base}/releases/${release_id}"
-          ssh_opts="-i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes"
-
-          ssh $ssh_opts "${live_user}@${deploy_host}" "\
-            chmod +x '${remote_release_dir}/deploy/activate-live-release.sh' && \
-            '${remote_release_dir}/deploy/activate-live-release.sh' \
-              --base-dir '${live_base}' \
-              --release '${release_id}' \
-              --service '${service_name}' \
-              --port '${service_port}'"
+            release/archive/ \
+            "${live_user}@${deploy_host}:${archive_path}/"
 
       - name: Remove SSH config
         if: always()

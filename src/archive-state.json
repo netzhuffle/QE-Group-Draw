@@ -1,0 +1,93 @@
+{
+  "version": 275,
+  "updatedAt": "2026-04-21T18:18:28.581Z",
+  "lastMutation": {
+    "kind": "placed",
+    "version": 275,
+    "at": "2026-04-21T18:18:28.581Z",
+    "divisionId": "division-1",
+    "messages": ["Hacettepe Pegasus joins Group F in an unseeded slot."],
+    "teamId": "division-1-unseeded-hacettepe-pegasus",
+    "placementKey": "F-3"
+  },
+  "divisions": {
+    "division-1": {
+      "drawOrder": [
+        "division-1-1-malaka-vikings",
+        "division-1-1-braunschweiger-broomicorns",
+        "division-1-1-titans-paris",
+        "division-1-1-ruhr-phoenix",
+        "division-1-1-ghent-gargoyles",
+        "division-1-1-werewolves-of-london-firsts",
+        "division-1-2-paris-frog",
+        "division-1-2-london-qc",
+        "division-1-2-sagene-if-1",
+        "division-1-2-siena-ghibellines",
+        "division-1-2-toulouse-minotaures",
+        "division-1-2-rheinos-bonn",
+        "division-1-unseeded-bel-flamingos",
+        "division-1-unseeded-werewolves-of-london-seconds",
+        "division-1-unseeded-velociraptors-qc",
+        "division-1-unseeded-smoking-thestrals-stuttgart-tu-bingen",
+        "division-1-unseeded-krako-w-dragons",
+        "division-1-unseeded-mu-nster-marauders",
+        "division-1-unseeded-heidelberger-hellhounds",
+        "division-1-unseeded-vienna-vanguards",
+        "division-1-unseeded-scc-berlin-bluecaps-sky",
+        "division-1-unseeded-darmstadt-athenas",
+        "division-1-unseeded-buckbeak-riders",
+        "division-1-unseeded-hacettepe-pegasus"
+      ],
+      "messages": [
+        "Hacettepe Pegasus joins Group F in an unseeded slot.",
+        "Buckbeak Riders joins Group D in an unseeded slot.",
+        "Darmstadt Athenas joins Group E in an unseeded slot.",
+        "Skipping Group D for Darmstadt Athenas because Germany is already represented there.",
+        "SCC Berlin Bluecaps Sky joins Group C in an unseeded slot.",
+        "Vienna Vanguards joins Group B in an unseeded slot.",
+        "Heidelberger HellHounds joins Group A in an unseeded slot.",
+        "Münster Marauders joins Group F in an unseeded slot."
+      ],
+      "visibleReservations": {}
+    },
+    "division-2": {
+      "drawOrder": [
+        "division-2-1-montpellier-boucaniers",
+        "division-2-1-lie-ge-leviathans",
+        "division-2-1-augsburg-owls",
+        "division-2-1-mu-nchner-wolpertinger",
+        "division-2-1-sevilla-warriors",
+        "division-2-1-madrid-wolves-qt",
+        "division-2-2-oxford-mammoths",
+        "division-2-2-danube-direwolves",
+        "division-2-2-phoenix-qc",
+        "division-2-2-garda-lakers",
+        "division-2-2-horkruxe-halle",
+        "division-2-2-olympiens-paris",
+        "division-2-unseeded-olympians-qc",
+        "division-2-unseeded-turicum-thunderbirds",
+        "division-2-unseeded-burning-hippogriffs-caen-q",
+        "division-2-unseeded-berner-boggarts",
+        "division-2-unseeded-sggf",
+        "division-2-unseeded-ntnui-rumpeldunk",
+        "division-2-unseeded-skyweavers-ło-dz",
+        "division-2-unseeded-birmingham-badgers",
+        "division-2-unseeded-aemona-argonauts",
+        "division-2-unseeded-southsea-qc",
+        "division-2-unseeded-sagene-if-2",
+        "division-2-unseeded-prague-pegasus"
+      ],
+      "messages": [
+        "Prague Pegasus joins Group F in an unseeded slot.",
+        "Sagene IF 2 joins Group C in an unseeded slot.",
+        "Southsea QC joins Group E in an unseeded slot.",
+        "Skipping Group C for Southsea QC because UK is already represented there.",
+        "Aemona Argonauts joins Group B in an unseeded slot.",
+        "Birmingham Badgers joins Group D in an unseeded slot.",
+        "Skipping Group B and Group C for Birmingham Badgers because UK is already represented there.",
+        "SkyWeavers Łódź joins Group A in an unseeded slot."
+      ],
+      "visibleReservations": {}
+    }
+  }
+}

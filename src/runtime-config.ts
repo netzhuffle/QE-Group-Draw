@@ -1,5 +1,5 @@
 export interface RuntimeConfig {
-  mode: "local" | "live";
+  mode: "local" | "live" | "archive";
   stateEndpoint: string;
   commandEndpoint: string;
   websocketEndpoint: string;
@@ -26,9 +26,11 @@ function getAdminPassword(): string | null {
 
 export function resolveRuntimeConfig(): RuntimeConfig {
   const overrides = window.__GROUPDRAW_RUNTIME_CONFIG__ ?? {};
+  const runtimeMode =
+    overrides.mode === "live" || overrides.mode === "archive" ? overrides.mode : "local";
 
   return {
-    mode: overrides.mode === "live" ? "live" : "local",
+    mode: runtimeMode,
     stateEndpoint: overrides.stateEndpoint ?? "/api/state",
     commandEndpoint: overrides.commandEndpoint ?? "/api/admin/command",
     websocketEndpoint: overrides.websocketEndpoint ?? "/api/ws",

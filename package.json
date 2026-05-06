@@ -11,6 +11,7 @@
     "build": "bun run css:build && bun build ./src/index.html --outdir ./dist --target browser --minify",
     "build:server": "bun build ./src/server.ts --target bun --outfile ./server-dist/index.js",
     "build:all": "bun run build && bun run build:server",
+    "prepare:archive": "bun ./scripts/prepare-archive-release.ts",
     "test": "bun test",
     "test:parallel": "bun test --parallel",
     "test:changed": "bun test --changed",

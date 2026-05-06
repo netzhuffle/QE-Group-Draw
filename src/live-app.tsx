@@ -95,7 +95,8 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
   const visibleReservationsRef = useRef(visibleReservations);
   const activeDivisionIdRef = useRef(activeDivisionId);
 
-  const isAdmin = props.runtimeConfig.adminPassword !== null;
+  const isArchive = props.runtimeConfig.mode === "archive";
+  const isAdmin = props.runtimeConfig.adminPassword !== null && !isArchive;
   const isModalOpen = pendingRemovalConfirmation !== null;
 
   useEffect(() => {
@@ -183,7 +184,11 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
         applySnapshotImmediately(snapshot);
         setIsInitialized(true);
         setLoadError(null);
-        connectSocket();
+        if (isArchive) {
+          setConnectionLabel("Archived");
+        } else {
+          connectSocket();
+        }
       } catch (error) {
         if (isCancelled) {
           return;
@@ -199,7 +204,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
       isCancelled = true;
       cleanupLiveResources();
     };
-  }, [connectSocket, props.runtimeConfig.stateEndpoint]);
+  }, [connectSocket, isArchive, props.runtimeConfig.stateEndpoint]);
 
   const activeState = divisionStates[activeDivisionId];
   const activeReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
@@ -245,7 +250,11 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
           <div className="min-w-0">
             <div className="eyebrow">European Quadball Cup 2026</div>
             <h1 className="hero-title">Group Draw Board</h1>
-            <p className="hero-subtitle">Live-sync board for admins and spectators.</p>
+            <p className="hero-subtitle">
+              {isArchive
+                ? "Archived final draw board."
+                : "Live-sync board for admins and spectators."}
+            </p>
           </div>
 
           <nav aria-label="Divisions" className="tab-strip">
@@ -274,7 +283,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
               value={`${placedTeamCount}/${activeState.config.teams.length}`}
             />
             <StatCard label="Progress" value={`${progress}%`} />
-            <StatCard label="Sync" value={connectionLabel} />
+            <StatCard label={isArchive ? "Status" : "Sync"} value={connectionLabel} />
             {isAdmin ? (
               <button
                 className="reset-button"
@@ -308,7 +317,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
         <section className="panel-surface panel-groups">
           <div className="panel-header">
             <div>
-              <div className="eyebrow">Live board</div>
+              <div className="eyebrow">{isArchive ? "Archived board" : "Live board"}</div>
               <h2 className="panel-title">Groups A-F</h2>
             </div>
             <div className="legend-row">

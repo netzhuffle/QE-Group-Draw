@@ -13,5 +13,5 @@ if (rootElement === null) {
 const runtimeConfig = resolveRuntimeConfig();
 
 createRoot(rootElement).render(
-  runtimeConfig.mode === "live" ? <LiveApp runtimeConfig={runtimeConfig} /> : <App />,
+  runtimeConfig.mode === "local" ? <App /> : <LiveApp runtimeConfig={runtimeConfig} />,
 );

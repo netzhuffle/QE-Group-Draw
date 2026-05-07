@@ -1,5 +1,5 @@
 [Unit]
-Description=QE Group Draw live Bun server
+Description=QE Group Draw live server
 After=network.target
 
 [Service]
@@ -12,7 +12,7 @@ Environment=HOST=127.0.0.1
 Environment=PORT=3010
 Environment=STATE_FILE=/srv/qe-group-draw-live/shared/live-state.json
 EnvironmentFile=-/srv/qe-group-draw-live/shared/live.env
-ExecStart=/home/groupdraw-live/.bun/bin/bun ./server-dist/index.js
+ExecStart=/srv/qe-group-draw-live/current/qe-group-draw-live
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

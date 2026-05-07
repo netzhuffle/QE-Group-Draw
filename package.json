@@ -10,7 +10,7 @@
     "serve:live": "bun ./src/server.ts",
     "build": "bun run css:build && bun build ./src/index.html --outdir ./dist --target browser --minify",
     "build:archive": "bun ./scripts/build-archive-page.tsx ./dist",
-    "build:server": "bun build ./src/server.ts --target bun --outfile ./server-dist/index.js",
+    "build:server": "rm -rf ./server-dist && bun build ./src/server.ts --compile --target=bun-linux-x64-modern --outfile ./server-dist/qe-group-draw-live",
     "build:all": "bun run build && bun run build:archive && bun run build:server",
     "test": "bun test",
     "test:parallel": "bun test --parallel",

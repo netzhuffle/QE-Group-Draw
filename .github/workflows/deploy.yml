@@ -55,13 +55,10 @@ jobs:
           rsync -a \
             dist/ \
             release/live/dist/
-          rsync -a \
-            server-dist/ \
-            release/live/server-dist/
+          install -m 755 server-dist/qe-group-draw-live release/live/qe-group-draw-live
           rsync -a \
             deploy/ \
             release/live/deploy/
-          cp .bun-version release/live/.bun-version
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v6

@@ -6,6 +6,7 @@ release_id=""
 service_name="qe-group-draw-live"
 port="3010"
 keep_releases=5
+executable_path="qe-group-draw-live"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -41,22 +42,50 @@ if [[ -z "$release_id" ]]; then
   exit 1
 fi
 
+if [[ ! "$release_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "Invalid release value: ${release_id}" >&2
+  exit 1
+fi
+
+if [[ ! "$service_name" =~ ^[A-Za-z0-9_.@-]+$ ]]; then
+  echo "Invalid service value: ${service_name}" >&2
+  exit 1
+fi
+
+if [[ ! "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
+  echo "Invalid port value: ${port}" >&2
+  exit 1
+fi
+
 release_dir="${base_dir}/releases/${release_id}"
 current_link="${base_dir}/current"
 previous_release=""
-expected_bun_version_file="${release_dir}/.bun-version"
 
 if [[ ! -d "$release_dir" ]]; then
   echo "Release directory does not exist: ${release_dir}" >&2
   exit 1
 fi
 
-if [[ ! -r "$expected_bun_version_file" ]]; then
-  echo "Pinned Bun version file is missing: ${expected_bun_version_file}" >&2
+cd "$release_dir"
+
+if [[ ! -x "${release_dir}/${executable_path}" ]]; then
+  echo "Compiled executable is missing or not executable: ${release_dir}/${executable_path}" >&2
   exit 1
 fi
 
-expected_bun_version="$(tr -d '[:space:]' < "$expected_bun_version_file")"
+if ! grep -qw avx2 /proc/cpuinfo; then
+  echo "Server CPU does not support AVX2, but this release uses bun-linux-x64-modern." >&2
+  exit 1
+fi
+
+expected_exec_start="${current_link}/${executable_path}"
+actual_exec_start="$(systemctl show "$service_name" --property=ExecStart --value 2>/dev/null || true)"
+
+if [[ "$actual_exec_start" != *"$expected_exec_start"* ]]; then
+  echo "Systemd service ${service_name} does not run ${expected_exec_start}." >&2
+  echo "Current ExecStart: ${actual_exec_start:-<unavailable>}" >&2
+  exit 1
+fi
 
 mkdir -p "${base_dir}/shared"
 
@@ -73,26 +102,21 @@ restart_service() {
 check_health() {
   local public_health_url="http://127.0.0.1:${port}/healthz"
   local internal_health_url="http://127.0.0.1:${port}/internal/healthz"
+  local root_url="http://127.0.0.1:${port}/"
   local attempt
   local public_health_body
-  local health_body
 
   for attempt in $(seq 1 20); do
     if public_health_body="$(curl --fail --silent --show-error --max-time 2 "$public_health_url")" &&
-      health_body="$(curl --fail --silent --show-error --max-time 2 "$internal_health_url")"; then
+      curl --fail --silent --show-error --max-time 2 "$internal_health_url" >/dev/null &&
+      curl --fail --silent --show-error --max-time 2 "$root_url" | grep -qi "<!doctype html"; then
       if [[ "$public_health_body" == *"\"bunVersion\":"* ]]; then
         echo "Public health check must not expose Bun version." >&2
         echo "Health response: ${public_health_body}" >&2
         return 1
       fi
 
-      if [[ "$health_body" == *"\"bunVersion\":\"${expected_bun_version}\""* ]]; then
-        return 0
-      fi
-
-      echo "Runtime Bun version mismatch in internal health check: expected ${expected_bun_version}." >&2
-      echo "Health response: ${health_body}" >&2
-      return 1
+      return 0
     fi
     sleep 1
   done
@@ -119,7 +143,13 @@ fi
 echo "Deploy failed; attempting rollback." >&2
 if [[ -n "$previous_release" && -d "$previous_release" ]]; then
   ln -sfn "$previous_release" "$current_link"
-  sudo systemctl restart "$service_name" || true
+  if restart_service && check_health; then
+    echo "Rolled back to ${previous_release}." >&2
+  else
+    echo "Rollback to ${previous_release} failed health checks." >&2
+  fi
+else
+  echo "No previous release available for rollback." >&2
 fi
 
 exit 1

@@ -60,32 +60,32 @@
         "division-2-1-madrid-wolves-qt",
         "division-2-2-oxford-mammoths",
         "division-2-2-danube-direwolves",
-        "division-2-2-phoenix-qc",
+        "division-2-2-prague-pegasus",
         "division-2-2-garda-lakers",
         "division-2-2-horkruxe-halle",
         "division-2-2-olympiens-paris",
-        "division-2-unseeded-olympians-qc",
         "division-2-unseeded-turicum-thunderbirds",
+        "division-2-unseeded-olympians-qc",
         "division-2-unseeded-burning-hippogriffs-caen-q",
         "division-2-unseeded-berner-boggarts",
         "division-2-unseeded-sggf",
         "division-2-unseeded-ntnui-rumpeldunk",
         "division-2-unseeded-skyweavers-ło-dz",
-        "division-2-unseeded-birmingham-badgers",
         "division-2-unseeded-aemona-argonauts",
-        "division-2-unseeded-southsea-qc",
         "division-2-unseeded-sagene-if-2",
-        "division-2-unseeded-prague-pegasus"
+        "division-2-unseeded-birmingham-badgers",
+        "division-2-unseeded-southsea-qc",
+        "division-2-unseeded-deluminators-dresden"
       ],
       "messages": [
-        "Prague Pegasus joins Group F in an unseeded slot.",
-        "Sagene IF 2 joins Group C in an unseeded slot.",
+        "Deluminators Dresden joins Group F in an unseeded slot.",
         "Southsea QC joins Group E in an unseeded slot.",
-        "Skipping Group C for Southsea QC because UK is already represented there.",
-        "Aemona Argonauts joins Group B in an unseeded slot.",
         "Birmingham Badgers joins Group D in an unseeded slot.",
-        "Skipping Group B and Group C for Birmingham Badgers because UK is already represented there.",
-        "SkyWeavers Łódź joins Group A in an unseeded slot."
+        "Sagene IF 2 joins Group C in an unseeded slot.",
+        "Aemona Argonauts joins Group B in an unseeded slot.",
+        "SkyWeavers Łódź joins Group A in an unseeded slot.",
+        "NTNUI Rumpeldunk joins Group F in an unseeded slot.",
+        "SGGF joins Group E in an unseeded slot."
       ],
       "visibleReservations": {}
     }

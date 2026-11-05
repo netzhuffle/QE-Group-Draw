@@ -63,7 +63,7 @@ const server = Bun.serve({
     return serveFrontend(url.pathname);
   },
   websocket: {
-    data: {} as Record<string, never>,
+    data: {},
     open(ws) {
       ws.subscribe(websocketTopic);
       ws.send(JSON.stringify(buildSnapshotEnvelope(currentSnapshot)));

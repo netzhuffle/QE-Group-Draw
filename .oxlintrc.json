@@ -2,13 +2,12 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "options": {
     "reportUnusedDisableDirectives": "error",
-    "typeAware": true,
-    "typeCheck": true
+    "typeAware": true
   },
   "plugins": ["eslint", "typescript", "react", "react-perf", "unicorn", "oxc", "import", "promise"],
   "settings": {
     "react": {
-      "version": "19.2.4"
+      "version": "19.3.1"
     }
   },
   "env": {
@@ -21,6 +20,7 @@
     "perf": "error"
   },
   "rules": {
+    "no-underscore-dangle": ["error", { "allow": ["__GROUPDRAW_RUNTIME_CONFIG__"] }],
     "no-case-declarations": "error",
     "no-empty": "error",
     "no-fallthrough": "error",

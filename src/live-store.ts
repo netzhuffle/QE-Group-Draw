@@ -114,7 +114,7 @@ export function restoreDivisionStates(snapshot: LiveSnapshot): DivisionStatesRec
         restoreDivisionState(division, storedState.drawOrder, storedState.messages),
       ];
     }),
-  ) as DivisionStatesRecord;
+  );
 }
 
 export function restoreVisibleReservations(snapshot: LiveSnapshot): DivisionReservationRecord {
@@ -123,7 +123,7 @@ export function restoreVisibleReservations(snapshot: LiveSnapshot): DivisionRese
       division.id,
       getDivisionStateFromSnapshot(snapshot, division.id).visibleReservations,
     ]),
-  ) as DivisionReservationRecord;
+  );
 }
 
 function buildPlacedMutation(

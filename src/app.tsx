@@ -50,11 +50,8 @@ interface PendingRemovalConfirmation {
 }
 
 export function App(): ReactElement {
-  const [divisionStates, setDivisionStates] = useState<DivisionStateRecord>(
-    () =>
-      Object.fromEntries(
-        divisions.map((division) => [division.id, createDivisionState(division)]),
-      ) as DivisionStateRecord,
+  const [divisionStates, setDivisionStates] = useState<DivisionStateRecord>(() =>
+    Object.fromEntries(divisions.map((division) => [division.id, createDivisionState(division)])),
   );
   const [activeDivisionId, setActiveDivisionId] = useState(divisions[0]?.id ?? "division-1");
   const [highlightedPlacementKey, setHighlightedPlacementKey] = useState<string | null>(null);
@@ -62,21 +59,10 @@ export function App(): ReactElement {
   const [constraintFeed, setConstraintFeed] = useState<ConstraintFeedState | null>(null);
   const [visibleReservations, setVisibleReservations] = useState<
     Record<DivisionId, ReservationMap>
-  >(
-    () =>
-      Object.fromEntries(
-        divisions.map((division) => [division.id, {} as ReservationMap]),
-      ) as Record<DivisionId, ReservationMap>,
-  );
+  >(() => Object.fromEntries(divisions.map((division) => [division.id, {}])));
   const [animatedReservationKeys, setAnimatedReservationKeys] = useState<
     Record<DivisionId, string[]>
-  >(
-    () =>
-      Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])) as Record<
-        DivisionId,
-        string[]
-      >,
-  );
+  >(() => Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])));
   const [isPlacementPending, setIsPlacementPending] = useState(false);
   const [isRemovalPending, setIsRemovalPending] = useState(false);
   const [removingPlacementKey, setRemovingPlacementKey] = useState<string | null>(null);

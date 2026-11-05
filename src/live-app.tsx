@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Dispatch, ReactElement, SetStateAction } from "react";
 
 import {
@@ -69,13 +69,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
   const [skipAnimationCues, setSkipAnimationCues] = useState<SkipAnimationCue[]>([]);
   const [animatedReservationKeys, setAnimatedReservationKeys] = useState<
     Record<DivisionId, string[]>
-  >(
-    () =>
-      Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])) as Record<
-        DivisionId,
-        string[]
-      >,
-  );
+  >(() => Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])));
   const [isPlacementPending, setIsPlacementPending] = useState(false);
   const [isRemovalPending, setIsRemovalPending] = useState(false);
   const [removingPlacementKey, setRemovingPlacementKey] = useState<string | null>(null);
@@ -124,41 +118,9 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
     socketRef.current = null;
   });
 
-  const connectSocket = useCallback((): void => {
-    shouldReconnectRef.current = true;
-    socketRef.current?.close();
-    socketRef.current = openLiveSocket(
-      props.runtimeConfig.websocketEndpoint,
-      (snapshot) => enqueueSnapshot(snapshot, snapshot.version > appliedVersionRef.current),
-      (socket) => {
-        if (socketRef.current !== socket) {
-          return;
-        }
-        reconnectAttemptRef.current = 0;
-        setConnectionLabel(isAdmin ? "Admin live" : "Live");
-      },
-      (socket) => {
-        if (socketRef.current !== socket || !shouldReconnectRef.current) {
-          return;
-        }
+  const enqueueLiveSnapshot = useEffectEvent(enqueueSnapshot);
 
-        setConnectionLabel("Reconnecting");
-        if (reconnectTimeoutRef.current !== null) {
-          return;
-        }
-
-        const delay =
-          reconnectDelaysMs[Math.min(reconnectAttemptRef.current, reconnectDelaysMs.length - 1)] ??
-          reconnectDelaysMs[reconnectDelaysMs.length - 1];
-
-        reconnectAttemptRef.current += 1;
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          reconnectTimeoutRef.current = null;
-          connectSocket();
-        }, delay);
-      },
-    );
-  }, [isAdmin, props.runtimeConfig.websocketEndpoint]);
+  const initializeSnapshot = useEffectEvent(applySnapshotImmediately);
 
   useEffect(() => {
     if (constraintFeed === null) {
@@ -177,6 +139,43 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
       return undefined;
     }
 
+    function connectSocket(): void {
+      shouldReconnectRef.current = true;
+      socketRef.current?.close();
+      socketRef.current = openLiveSocket(
+        props.runtimeConfig.websocketEndpoint,
+        (snapshot) => enqueueLiveSnapshot(snapshot, snapshot.version > appliedVersionRef.current),
+        (socket) => {
+          if (socketRef.current !== socket) {
+            return;
+          }
+          reconnectAttemptRef.current = 0;
+          setConnectionLabel(isAdmin ? "Admin live" : "Live");
+        },
+        (socket) => {
+          if (socketRef.current !== socket || !shouldReconnectRef.current) {
+            return;
+          }
+
+          setConnectionLabel("Reconnecting");
+          if (reconnectTimeoutRef.current !== null) {
+            return;
+          }
+
+          const delay =
+            reconnectDelaysMs[
+              Math.min(reconnectAttemptRef.current, reconnectDelaysMs.length - 1)
+            ] ?? reconnectDelaysMs[reconnectDelaysMs.length - 1];
+
+          reconnectAttemptRef.current += 1;
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            reconnectTimeoutRef.current = null;
+            connectSocket();
+          }, delay);
+        },
+      );
+    }
+
     let isCancelled = false;
 
     const initialize = async (): Promise<void> => {
@@ -187,7 +186,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
           return;
         }
 
-        applySnapshotImmediately(snapshot);
+        initializeSnapshot(snapshot);
         setIsInitialized(true);
         setLoadError(null);
         connectSocket();
@@ -206,7 +205,12 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
       isCancelled = true;
       cleanupLiveResources();
     };
-  }, [connectSocket, isArchive, props.runtimeConfig.stateEndpoint]);
+  }, [
+    isAdmin,
+    isArchive,
+    props.runtimeConfig.stateEndpoint,
+    props.runtimeConfig.websocketEndpoint,
+  ]);
 
   const activeState = divisionStates[activeDivisionId];
   const activeReservationMap = visibleReservations[activeDivisionId] ?? emptyReservationMap;
@@ -476,10 +480,7 @@ export function LiveApp(props: { runtimeConfig: RuntimeConfig }): ReactElement {
     setIsPlacementPending(false);
     setIsRemovalPending(false);
     setAnimatedReservationKeys(
-      Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])) as Record<
-        DivisionId,
-        string[]
-      >,
+      Object.fromEntries(divisions.map((division) => [division.id, [] as string[]])),
     );
   }
 
